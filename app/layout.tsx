@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { Geist } from "next/font/google";
 import "katex/dist/katex.min.css";
 import "./globals.css";
 
-const geistSans = Geist({
+const geistSans = localFont({
+  src: "./fonts/GeistVF.woff",
   variable: "--font-geist-sans",
-  subsets: ["latin"],
+  weight: "100 900",
 });
 
 const hyPixel = localFont({
@@ -29,6 +29,7 @@ export default function RootLayout({
     <html
       lang="zh-CN"
       data-theme="corporate"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${hyPixel.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-base-200 text-base-content">

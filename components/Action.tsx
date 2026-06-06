@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type Ref } from "react";
 import { scaleBand, scaleLinear } from "d3-scale";
 import { max } from "d3-array";
 import katex from "katex";
@@ -8,9 +8,23 @@ import katex from "katex";
 type Props = {
   probs?: number[];
   sampledIndex?: number;
+  anchorRef?: Ref<HTMLDivElement>;
 };
 
-export default function Action({ probs = [0.15, 0.4, 0.2, 0.25], sampledIndex = 1 }: Props) {
+function setRefValue<T>(ref: Ref<T> | undefined, value: T | null) {
+  if (!ref) {
+    return;
+  }
+
+  if (typeof ref === "function") {
+    ref(value);
+    return;
+  }
+
+  ref.current = value;
+}
+
+export default function Action({ probs = [0.15, 0.4, 0.2, 0.25], sampledIndex = 1, anchorRef }: Props) {
   const formulaRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -38,6 +52,7 @@ export default function Action({ probs = [0.15, 0.4, 0.2, 0.25], sampledIndex = 
 
   return (
     <div
+      ref={(node) => setRefValue(anchorRef, node)}
       className="-ml-16 rounded-2xl border-2 border-accent bg-accent/10 px-4 py-3 shadow-md tooltip tooltip-open tooltip-accent"
       data-tip={`π：\n整个动作的概率分布`}
     >

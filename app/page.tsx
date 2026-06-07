@@ -92,8 +92,8 @@ export default function HomePage() {
             </div>
 
             <div
-              className={`relative z-20 -translate-x-8 flex flex-nowrap items-center gap-4 sm:gap-6 ${
-                expanded ? "-translate-y-32" : "-translate-y-8"
+              className={`relative z-15 -translate-x-8 flex flex-nowrap items-center gap-4 sm:gap-6 ${
+                expanded ? "-translate-y-15" : "-translate-y-8"
               }`}
             >
               <svg
@@ -150,7 +150,7 @@ export default function HomePage() {
               </svg>
 
               <svg
-                className={`h-8 w-170 shrink-0 text-primary ${expanded ? "mt-128 -translate-x-186" : "mt-50 -translate-x-180"}`}
+                className={`h-8 w-170 shrink-0 text-primary ${expanded ? "mt-75 -translate-x-186" : "mt-50 -translate-x-180"}`}
                 viewBox={expanded ? "0 0 680 32" : "0 0 650 32"}
                 aria-hidden="true"
               >

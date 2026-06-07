@@ -72,7 +72,7 @@ export default function Buffer({ expanded }: { expanded: boolean }) {
       <div
         className="mt-4 rounded-2xl border-2 border-secondary bg-secondary/10 px-6 py-5 shadow-md"
         style={{
-          marginLeft: expanded ? "-360px" : "-784px",
+          marginLeft: expanded ? "-800px" : "-784px",
           width: expanded ? 840 : 860,
           height: expanded ? 540 : 318,
         }}

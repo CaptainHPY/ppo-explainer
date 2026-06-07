@@ -1,6 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 type DiagnosticsModalProps = {
   open: boolean;
@@ -17,12 +18,43 @@ export default function DiagnosticsModal({
   onClose,
   children,
 }: DiagnosticsModalProps) {
-  if (!open) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  useEffect(() => {
+    if (!open || !mounted) {
+      return;
+    }
+
+    const { body, documentElement } = document;
+    const previousBodyOverflow = body.style.overflow;
+    const previousHtmlOverflow = documentElement.style.overflow;
+    const previousBodyOverscroll = body.style.overscrollBehavior;
+    const previousHtmlOverscroll = documentElement.style.overscrollBehavior;
+
+    body.style.overflow = "hidden";
+    documentElement.style.overflow = "hidden";
+    body.style.overscrollBehavior = "contain";
+    documentElement.style.overscrollBehavior = "contain";
+
+    return () => {
+      body.style.overflow = previousBodyOverflow;
+      documentElement.style.overflow = previousHtmlOverflow;
+      body.style.overscrollBehavior = previousBodyOverscroll;
+      documentElement.style.overscrollBehavior = previousHtmlOverscroll;
+    };
+  }, [mounted, open]);
+
+  if (!open || !mounted) {
     return null;
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-base-content/20 p-4 backdrop-blur-sm">
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-base-content/38 p-4 backdrop-blur-md">
       <div
         className="absolute inset-0"
         aria-hidden="true"
@@ -52,8 +84,9 @@ export default function DiagnosticsModal({
           </button>
         </div>
 
-        <div className="overflow-y-auto px-5 py-4">{children}</div>
+        <div className="overflow-y-auto overscroll-contain px-5 py-4">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

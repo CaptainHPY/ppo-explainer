@@ -219,13 +219,13 @@ export default function Agent({ expanded, onExpandedChange, anchorRef, criticOut
 
   const { layers, segmentsByLayer, links } = useMemo(() => {
     const builtLayers: Layer[] = [
-      { id: "obs", lane: "shared", label: "输入观测", dim: OBS_DIM, x: geometry.x.obs },
+      { id: "obs", lane: "shared", label: "????", dim: OBS_DIM, x: geometry.x.obs },
       { id: "actor_fc1", lane: "actor", label: "Actor fc1", dim: HIDDEN_DIM, x: geometry.x.fc1 },
       { id: "actor_fc2", lane: "actor", label: "Actor fc2", dim: HIDDEN_DIM, x: geometry.x.fc2 },
       { id: "actor_logits", lane: "actor", label: "logits", dim: ACTION_DIM, x: geometry.x.out },
       { id: "critic_fc1", lane: "critic", label: "Critic fc1", dim: HIDDEN_DIM, x: geometry.x.fc1 },
       { id: "critic_fc2", lane: "critic", label: "Critic fc2", dim: HIDDEN_DIM, x: geometry.x.fc2 },
-      { id: "critic_value", lane: "critic", label: "状态价值 V(s)", dim: 1, x: geometry.x.out },
+      { id: "critic_value", lane: "critic", label: "???? V(s)", dim: 1, x: geometry.x.out },
     ];
 
     const segs = new Map<LayerId, Segment[]>();
@@ -368,7 +368,7 @@ export default function Agent({ expanded, onExpandedChange, anchorRef, criticOut
   const actorExplorerOpen = selectedActorStage !== null;
   const activeActorStage = selectedActorStage ? getActorFormulaStage(selectedActorStage) : null;
   const actorFocusTargets = hoveredActorTargets ?? activeActorStage?.highlightTargets ?? null;
-  const criticFocused = diagnosticsOpen || hoverState !== null;
+  const criticFocused = !diagnosticsOpen && hoverState !== null;
   const diagnosticsLoading = valueLoss.isLoading || explainedVariance.isLoading;
   const diagnosticsError = valueLoss.error ?? explainedVariance.error;
   const summaryToneClass =
@@ -381,12 +381,15 @@ export default function Agent({ expanded, onExpandedChange, anchorRef, criticOut
   function openCriticDiagnostics() {
     setSelectedActorStage(null);
     setHoveredActorTargets(null);
+    setHoverText(null);
+    setHoverState(null);
     setSelectedDiagnostics("critic");
   }
 
   function closeCriticDiagnostics() {
     setSelectedDiagnostics(null);
     setHoverState(null);
+    setHoverText(null);
   }
 
   function closeActorExplorer() {
@@ -444,7 +447,7 @@ export default function Agent({ expanded, onExpandedChange, anchorRef, criticOut
   const criticLabels = [
     { key: "critic_fc1", label: "Critic fc1", x: geometry.x.fc1 - 36, width: 148 },
     { key: "critic_fc2", label: "Critic fc2", x: geometry.x.fc2 - 40, width: 148 },
-    { key: "critic_value", label: "状态价值 V(s)", x: geometry.x.out - 56, width: 138 },
+    { key: "critic_value", label: "???? V(s)", x: geometry.x.out - 56, width: 138 },
   ] as const;
 
   const logitsLabel = {
@@ -695,7 +698,7 @@ export default function Agent({ expanded, onExpandedChange, anchorRef, criticOut
             ))}
           </g>
 
-          {!actorExplorerOpen ? (
+          {!actorExplorerOpen && !diagnosticsOpen ? (
             <foreignObject x={hoverBox.x} y={hoverBox.y} width={hoverBox.width} height={hoverBox.height}>
               <div
                 className={`rounded-2xl bg-primary/10 px-3 py-2 text-[11px] leading-snug text-primary transition-opacity ${
@@ -709,8 +712,7 @@ export default function Agent({ expanded, onExpandedChange, anchorRef, criticOut
 
           <foreignObject x={padding.left} y={descriptionY} width={expandedWidth - padding.left - padding.right} height={40}>
             <div className="text-[11px] leading-relaxed text-base-content/70 sm:text-xs">
-              输入观测 s 来自环境状态向量（16 维）；随后分别进入 actor 与 critic 分支，隐藏层为 64 维，最终 actor 输出 4 维
-              logits（对应动作），critic 输出 1 维状态价值 V(s)。
+              ???? s ?????????16 ????????? actor ? critic ??????? 64 ???? actor ?? 4 ? logits???????critic ?? 1 ????? V(s)?
             </div>
           </foreignObject>
         </svg>
@@ -842,7 +844,7 @@ export default function Agent({ expanded, onExpandedChange, anchorRef, criticOut
                   ? explainMetricValue("explained_variance", activeExplainedVariancePoint.value)
                   : hoverState?.metricId === "value_loss" && activeValueLossPoint
                     ? explainMetricValue("value_loss", activeValueLossPoint.value)
-                    : "这组样例里的 critic 还没完全跟上，explained_variance 早期接近 0，value_loss 也保持着明显波动。"}
+                    : "?????? critic ???????explained_variance ???? 0?value_loss ?????????"}
               </div>
             </div>
           )}

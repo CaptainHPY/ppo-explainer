@@ -71,9 +71,9 @@ export default function Buffer({ expanded }: { expanded: boolean }) {
     <>
       <div
         className="-ml-196 mt-4 rounded-2xl border-2 border-secondary bg-secondary/10 px-6 py-5 shadow-md"
-        style={{ width: expanded ? 920 : 860, height: expanded ? 658 : 318 }}
+        style={{ width: expanded ? 840 : 860, height: expanded ? 540 : 318 }}
       >
-        <div className={`flex h-full flex-col gap-3 ${expanded ? "pt-28" : "pt-1"}`}>
+        <div className={`flex h-full flex-col gap-3 ${expanded ? "pt-16" : "pt-1"}`}>
           <div className="relative">
             <button
               type="button"

@@ -6,6 +6,7 @@ import Agent from "../components/agent";
 import Action from "@/components/Action";
 import Buffer from "@/components/Buffer";
 import Environment from "@/components/Env";
+import TimeVariantVisualizations from "@/components/TimeVariantVisualizations";
 
 export default function HomePage() {
   const [expanded, setExpanded] = useState(false);
@@ -37,6 +38,8 @@ export default function HomePage() {
           </div>
 
           <div className="relative mt-16 flex w-max min-w-full flex-nowrap items-center justify-center gap-4 sm:gap-6">
+            <TimeVariantVisualizations />
+
             {expanded ? (
               <button
                 type="button"

@@ -1,27 +1,51 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
-import Agent from "../components/Agent";
+
+import Agent from "../components/agent";
+import Action from "@/components/Action";
 import Buffer from "@/components/Buffer";
 import Environment from "@/components/Env";
-import Action from "@/components/Action";
 
 export default function HomePage() {
   const [expanded, setExpanded] = useState(false);
 
+  function handleCollapseToHome() {
+    setExpanded(false);
+  }
+
   return (
     <>
-      <style>{`\n        @keyframes scrollDash {\n          to {\n            stroke-dashoffset: -20px;\n          }\n        }\n\n        .dash-animation {\n          animation: scrollDash 1s linear infinite;\n        }\n      `}</style>
+      <style>{`
+        @keyframes scrollDash {
+          to {
+            stroke-dashoffset: -20px;
+          }
+        }
 
-      <div className="flex flex-1 flex-col bg-base-200 px-4 py-6 sm:px-6 overflow-x-auto overflow-y-visible">
+        .dash-animation {
+          animation: scrollDash 1s linear infinite;
+        }
+      `}</style>
+
+      <div className="flex flex-1 flex-col overflow-x-auto overflow-y-visible bg-base-200 px-4 py-6 sm:px-6">
         <div className="w-max min-w-full max-w-none space-y-6 overflow-visible">
-          <div className="card-body gap-5 items-center font-[family-name:var(--font-hypixel)]">
+          <div className="card-body items-center gap-5 font-[family-name:var(--font-hypixel)]">
             <h1 className="text-6xl font-bold tracking-tight text-base-content sm:text-6xl">
               PPO Explainer
             </h1>
           </div>
 
-          <div className="relative flex w-max min-w-full flex-nowrap items-center gap-4 justify-center sm:gap-6 mt-16">
+          <div className="relative mt-16 flex w-max min-w-full flex-nowrap items-center justify-center gap-4 sm:gap-6">
+            {expanded ? (
+              <button
+                type="button"
+                aria-label="Return to compact agent"
+                onClick={handleCollapseToHome}
+                className="absolute inset-0 z-10 bg-transparent"
+              />
+            ) : null}
+
             <svg
               className={`absolute pointer-events-none ${expanded ? "mt-102 ml-88" : "mt-8 ml-24"}`}
               style={{
@@ -48,7 +72,11 @@ export default function HomePage() {
                 </marker>
               </defs>
               <path
-                d={expanded ? "M 1240 350 L 1240 450 Q 1240 480 1200 480 L 50 480 Q 10 480 10 450 L 10 340" : "M 1160 350 L 1160 450 Q 1160 480 1100 480 L 250 480 Q 200 480 200 450 L 200 340"}
+                d={
+                  expanded
+                    ? "M 1240 350 L 1240 450 Q 1240 480 1200 480 L 50 480 Q 10 480 10 450 L 10 340"
+                    : "M 1160 350 L 1160 450 Q 1160 480 1100 480 L 250 480 Q 200 480 200 450 L 200 340"
+                }
                 stroke="var(--color-secondary)"
                 strokeWidth="3"
                 fill="none"
@@ -59,9 +87,15 @@ export default function HomePage() {
               />
             </svg>
 
-            <Agent expanded={expanded} onExpandedChange={setExpanded} />
+            <div className="relative z-20">
+              <Agent expanded={expanded} onExpandedChange={setExpanded} />
+            </div>
 
-            <div className={`-translate-x-8 flex flex-nowrap items-center gap-4 sm:gap-6 ${expanded ? "-translate-y-32" : "-translate-y-8"}`}>
+            <div
+              className={`relative z-15 -translate-x-8 flex flex-nowrap items-center gap-4 sm:gap-6 ${
+                expanded ? "-translate-y-15" : "-translate-y-8"
+              }`}
+            >
               <svg
                 className={`h-8 w-28 shrink-0 text-primary ${expanded ? "-translate-x-10" : "-translate-x-5"}`}
                 viewBox={expanded ? "0 0 120 32" : "0 0 70 32"}
@@ -116,7 +150,7 @@ export default function HomePage() {
               </svg>
 
               <svg
-                className={`h-8 w-170 shrink-0 text-primary ${expanded ? "mt-128 -translate-x-186" : "mt-50 -translate-x-180"}`}
+                className={`h-8 w-170 shrink-0 text-primary ${expanded ? "mt-75 -translate-x-186" : "mt-50 -translate-x-180"}`}
                 viewBox={expanded ? "0 0 680 32" : "0 0 650 32"}
                 aria-hidden="true"
               >
@@ -137,8 +171,9 @@ export default function HomePage() {
               </svg>
             </div>
 
-            <Buffer expanded={expanded} />
-            
+            <div className="relative z-20">
+              <Buffer expanded={expanded} />
+            </div>
           </div>
         </div>
       </div>

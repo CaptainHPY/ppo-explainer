@@ -225,12 +225,7 @@ export default function ActorFormulaExplorer({
 
       <div className="relative z-10 flex max-h-[88%] w-[min(92%,760px)] flex-col overflow-hidden rounded-3xl border border-base-300 bg-base-100/98 shadow-2xl">
         <div className="flex items-start justify-between gap-4 border-b border-base-300/70 px-5 py-4">
-          <div>
             <div className="text-sm font-semibold text-primary">Actor Formula Explorer</div>
-            <div className="mt-1 text-xs text-base-content/60">
-              Teaching view · 16 → 64 → 64 → 4 · 点击 stage 查看 actor 前向过程
-            </div>
-          </div>
 
           <button
             type="button"

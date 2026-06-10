@@ -4,12 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import katex from "katex";
 
 import { useMetricSeries } from "@/hooks/useMetricSeries";
-import {
-  explainMetricValue,
-  findClosestMetricPoint,
-  formatMetricValue,
-  summarizePolicyStability,
-} from "@/lib/metrics";
+import { explainMetricValue, findClosestMetricPoint, formatMetricValue } from "@/lib/metrics";
 import DiagnosticsModal from "@/components/metrics/DiagnosticsModal";
 import MetricMiniChart from "@/components/metrics/MetricMiniChart";
 
@@ -18,7 +13,7 @@ type MetricHoverState = {
   step: number;
 } | null;
 
-export default function Buffer({ expanded }: { expanded: boolean }) {
+export default function Buffer({ expanded, step }: { expanded: boolean; step: number }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [hoverState, setHoverState] = useState<MetricHoverState>(null);
@@ -47,13 +42,6 @@ export default function Buffer({ expanded }: { expanded: boolean }) {
   );
   const diagnosticsLoading = approxKl.isLoading || clipfrac.isLoading;
   const diagnosticsError = approxKl.error ?? clipfrac.error;
-  const stabilitySummary = summarizePolicyStability(activeApproxKlPoint, activeClipfracPoint);
-  const summaryToneClass =
-    stabilitySummary.tone === "stable"
-      ? "bg-success/15 text-success"
-      : stabilitySummary.tone === "watch"
-        ? "bg-warning/15 text-warning"
-        : "bg-error/15 text-error";
 
   function closeDiagnostics() {
     setShowDiagnostics(false);
@@ -65,16 +53,17 @@ export default function Buffer({ expanded }: { expanded: boolean }) {
       ? explainMetricValue("approx_kl", activeApproxKlPoint.value)
       : hoverState?.metricId === "clipfrac" && activeClipfracPoint
         ? explainMetricValue("clipfrac", activeClipfracPoint.value)
-        : stabilitySummary.detail;
+        : null;
 
   return (
     <>
       <div
-        className="mt-4 rounded-2xl border-2 border-secondary bg-secondary/10 px-6 py-5 shadow-md"
+        className="rounded-2xl border-2 border-secondary bg-secondary/10 px-6 py-5 shadow-md"
         style={{
-          marginLeft: expanded ? "-800px" : "-784px",
-          width: expanded ? 840 : 860,
-          height: expanded ? 540 : 318,
+          marginTop: expanded ? -70 : -100,
+          marginLeft: expanded ? 140 : 150,
+          width: 400,
+          height: expanded ? 450 : 290,
         }}
       >
         <div className={`flex h-full flex-col gap-3 ${expanded ? "pt-16" : "pt-1"}`}>
@@ -82,7 +71,7 @@ export default function Buffer({ expanded }: { expanded: boolean }) {
             <button
               type="button"
               onClick={() => setShowDiagnostics(true)}
-              className="absolute right-0 top-0 rounded-full border border-secondary/30 bg-secondary/10 px-3 py-1 text-xs font-semibold text-secondary transition hover:bg-secondary/15"
+              className="absolute right-0 top-0 z-30 rounded-full border border-secondary/30 bg-secondary/10 px-3 py-1 text-xs font-semibold text-secondary transition hover:bg-secondary/15"
             >
               Click to inspect
             </button>
@@ -190,22 +179,6 @@ export default function Buffer({ expanded }: { expanded: boolean }) {
         subtitle={hoverState ? `Step ${hoverState.step}` : "Inspect how PPO clipping keeps policy updates stable."}
       >
         <div className="space-y-3">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="space-y-1 text-xs text-base-content/70">
-              <div>
-                <span className="font-semibold text-secondary">approx_kl:</span>{" "}
-                {activeApproxKlPoint ? formatMetricValue("approx_kl", activeApproxKlPoint.value) : "--"}
-              </div>
-              <div>
-                <span className="font-semibold text-accent">clipfrac:</span>{" "}
-                {activeClipfracPoint ? formatMetricValue("clipfrac", activeClipfracPoint.value) : "--"}
-              </div>
-            </div>
-            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${summaryToneClass}`}>
-              {stabilitySummary.label}
-            </span>
-          </div>
-
           {diagnosticsLoading ? (
             <div className="rounded-xl border border-dashed border-secondary/25 bg-secondary/5 px-4 py-8 text-sm text-base-content/65">
               Loading buffer diagnostics...
@@ -225,8 +198,7 @@ export default function Buffer({ expanded }: { expanded: boolean }) {
                   hoverState={hoverState}
                   onHoverChange={setHoverState}
                   valueFormatter={(value) => formatMetricValue("approx_kl", value)}
-                  referenceValue={0.01}
-                  referenceLabel="large step"
+                  currentStep={step}
                   isEmphasized={hoverState?.metricId === "approx_kl"}
                 />
                 <MetricMiniChart
@@ -237,13 +209,12 @@ export default function Buffer({ expanded }: { expanded: boolean }) {
                   hoverState={hoverState}
                   onHoverChange={setHoverState}
                   valueFormatter={(value) => formatMetricValue("clipfrac", value)}
-                  referenceValue={0.1}
-                  referenceLabel="heavy clip"
+                  currentStep={step}
                   isEmphasized={hoverState?.metricId === "clipfrac"}
                 />
               </div>
 
-              <div className="rounded-xl border border-secondary/15 bg-secondary/8 px-4 py-3 text-sm text-base-content/75">
+              <div className="rounded-xl border border-secondary/15 bg-secondary/8 px-4 py-3 text-sm text-base-content/75 h-11">
                 {interpretation}
               </div>
             </div>

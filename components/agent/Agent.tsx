@@ -7,18 +7,13 @@ import ActorFormulaExplorer from "@/components/agent/ActorFormulaExplorer";
 import DiagnosticsModal from "@/components/metrics/DiagnosticsModal";
 import MetricMiniChart from "@/components/metrics/MetricMiniChart";
 import { useMetricSeries } from "@/hooks/useMetricSeries";
+import { explainMetricValue, findClosestMetricPoint, formatMetricValue, getLatestMetricPoint } from "@/lib/metrics";
 import {
   getActorFormulaStage,
   type ActorFormulaRouteId,
   type ActorFormulaStageId,
   type ActorHighlightTargets,
 } from "@/lib/actor-formula";
-import {
-  explainMetricValue,
-  findClosestMetricPoint,
-  formatMetricValue,
-  summarizeCriticFit,
-} from "@/lib/metrics";
 
 type LayerId =
   | "obs"
@@ -56,6 +51,7 @@ type RibbonLink = {
 
 type AgentProps = {
   expanded: boolean;
+  step: number;
   onExpandedChange: (expanded: boolean) => void;
   anchorRef?: Ref<HTMLElement>;
   criticOutputAnchorRef?: Ref<SVGRectElement>;
@@ -145,9 +141,8 @@ function setRefValue<T>(ref: Ref<T> | undefined, value: T | null) {
   ref.current = value;
 }
 
-export default function Agent({ expanded, onExpandedChange, anchorRef, criticOutputAnchorRef }: AgentProps) {
+export default function Agent({ expanded, step, onExpandedChange, anchorRef, criticOutputAnchorRef }: AgentProps) {
   const [dims, setDims] = useState({ width: 1100, height: 640 });
-  const [hoverText, setHoverText] = useState<string | null>(null);
   const [selectedDiagnostics, setSelectedDiagnostics] = useState<"critic" | null>(null);
   const [hoverState, setHoverState] = useState<{ metricId: string; step: number } | null>(null);
   const [selectedActorStage, setSelectedActorStage] = useState<ActorFormulaStageId | null>(null);
@@ -179,24 +174,21 @@ export default function Agent({ expanded, onExpandedChange, anchorRef, criticOut
     if (!expanded) {
       setSelectedDiagnostics(null);
       setHoverState(null);
-      setHoverText(null);
       setSelectedActorStage(null);
       setHoveredActorTargets(null);
     }
   }, [expanded]);
 
   const expandedWidth = Math.min(dims.width, 804);
-  const expandedHeight = 408;
+  const expandedHeight = 420;
   const padding = { left: 28, right: 28, top: 16, bottom: 16 };
   const titleY = 26;
   const actorBandY = 46;
   const actorBandHeight = 44;
   const plotTop = 98;
   const plotHeight = 208;
-  const plotBottom = plotTop + plotHeight;
-  const criticBandY = 318;
+  const criticBandY = 326;
   const criticBandHeight = 44;
-  const descriptionY = 354;
 
   const plotCenterX = (expandedWidth - padding.left - padding.right) / 2 + padding.left - 94;
   const plotCenterY = plotTop + plotHeight / 2;
@@ -354,16 +346,11 @@ export default function Agent({ expanded, onExpandedChange, anchorRef, criticOut
     return positions;
   }, [layers, segmentsByLayer, layerLayout]);
 
-  const selectedStep = hoverState?.step ?? null;
-  const activeValueLossPoint = findClosestMetricPoint(
-    valueLoss.data,
-    selectedStep ?? valueLoss.data[valueLoss.data.length - 1]?.step ?? null,
-  );
+  const activeValueLossPoint = getLatestMetricPoint(valueLoss.data, hoverState?.step ?? null);
   const activeExplainedVariancePoint = findClosestMetricPoint(
     explainedVariance.data,
-    selectedStep ?? explainedVariance.data[explainedVariance.data.length - 1]?.step ?? null,
+    hoverState?.step ?? explainedVariance.data[explainedVariance.data.length - 1]?.step ?? null,
   );
-  const criticSummary = summarizeCriticFit(activeValueLossPoint, activeExplainedVariancePoint);
   const diagnosticsOpen = selectedDiagnostics === "critic";
   const actorExplorerOpen = selectedActorStage !== null;
   const activeActorStage = selectedActorStage ? getActorFormulaStage(selectedActorStage) : null;
@@ -371,17 +358,10 @@ export default function Agent({ expanded, onExpandedChange, anchorRef, criticOut
   const criticFocused = !diagnosticsOpen && hoverState !== null;
   const diagnosticsLoading = valueLoss.isLoading || explainedVariance.isLoading;
   const diagnosticsError = valueLoss.error ?? explainedVariance.error;
-  const summaryToneClass =
-    criticSummary.tone === "stable"
-      ? "bg-success/15 text-success"
-      : criticSummary.tone === "watch"
-        ? "bg-warning/15 text-warning"
-        : "bg-error/15 text-error";
 
   function openCriticDiagnostics() {
     setSelectedActorStage(null);
     setHoveredActorTargets(null);
-    setHoverText(null);
     setHoverState(null);
     setSelectedDiagnostics("critic");
   }
@@ -389,7 +369,6 @@ export default function Agent({ expanded, onExpandedChange, anchorRef, criticOut
   function closeCriticDiagnostics() {
     setSelectedDiagnostics(null);
     setHoverState(null);
-    setHoverText(null);
   }
 
   function closeActorExplorer() {
@@ -400,7 +379,6 @@ export default function Agent({ expanded, onExpandedChange, anchorRef, criticOut
   function openActorExplorer(stageId: ActorFormulaStageId) {
     setSelectedDiagnostics(null);
     setHoverState(null);
-    setHoverText(null);
     setHoveredActorTargets(null);
     setSelectedActorStage(stageId);
   }
@@ -440,34 +418,27 @@ export default function Agent({ expanded, onExpandedChange, anchorRef, criticOut
   }
 
   const actorLabels = [
-    { key: "actor_fc1", label: "Actor fc1", x: geometry.x.fc1 - 36, width: 138 },
-    { key: "actor_fc2", label: "Actor fc2", x: geometry.x.fc2 - 42, width: 144 },
+    { key: "actor_fc1", label: "Actor fc1", x: geometry.x.fc1 - 20, width: 138 },
+    { key: "actor_fc2", label: "Actor fc2", x: geometry.x.fc2 - 22, width: 144 },
   ] as const;
 
   const criticLabels = [
-    { key: "critic_fc1", label: "Critic fc1", x: geometry.x.fc1 - 36, width: 148 },
-    { key: "critic_fc2", label: "Critic fc2", x: geometry.x.fc2 - 40, width: 148 },
-    { key: "critic_value", label: "状态价值 V(s)", x: geometry.x.out - 56, width: 138 },
+    { key: "critic_fc1", label: "Critic fc1", x: geometry.x.fc1 - 24, width: 148 },
+    { key: "critic_fc2", label: "Critic fc2", x: geometry.x.fc2 - 24, width: 148 },
+    { key: "critic_value", label: "状态价值 V(s)", x: geometry.x.out - 36, width: 138 },
   ] as const;
 
   const logitsLabel = {
-    x: geometry.x.out - 22,
+    x: geometry.x.out - 14,
     y: actorBandY,
     width: badgeWidth("logits"),
   };
 
-  const hoverBox = {
-    x: padding.left + 2,
-    y: criticBandY - 10,
-    width: 220,
-    height: 56,
-  };
-
   const networkMarkup = (
     <div className="card border border-base-300 bg-glass shadow-xl">
-      <div className="card-body relative p-3 sm:p-4">
+      <div className="card-body p-0">
         <svg width={expandedWidth} height={expandedHeight} style={{ display: "block" }}>
-          <text x={padding.left - 4} y={titleY + 4} className="fill-primary text-sm font-semibold">
+          <text x={plotCenterX + 86} y={titleY + 4} className="fill-primary text-sm font-semibold">
             Agent
           </text>
 
@@ -478,7 +449,7 @@ export default function Agent({ expanded, onExpandedChange, anchorRef, criticOut
                   type="button"
                   data-agent-interactive="true"
                   onClick={() => openActorExplorer(item.key === "actor_fc1" ? "fc1_linear" : "fc2_linear")}
-                  className={`badge badge-sm badge-outline flex h-10 w-full cursor-pointer items-center justify-center px-3 text-[11px] font-medium shadow-sm transition ${
+                  className={`badge badge-sm badge-outline flex h-8 cursor-pointer items-center justify-center px-3 text-[11px] font-medium shadow-sm transition ${
                     actorExplorerOpen && isActorLayerHighlighted(item.key as LayerId)
                       ? "border-primary bg-primary/16 text-primary"
                       : "border-primary bg-base-100/95 text-base-content/85 hover:bg-primary/6"
@@ -494,7 +465,7 @@ export default function Agent({ expanded, onExpandedChange, anchorRef, criticOut
                 type="button"
                 data-agent-interactive="true"
                 onClick={() => openActorExplorer("logits")}
-                className={`badge badge-sm badge-outline flex h-10 w-full cursor-pointer items-center justify-center px-3 text-[11px] font-medium shadow-sm transition ${
+                className={`badge badge-sm badge-outline flex h-8 cursor-pointer items-center justify-center px-3 text-[11px] font-medium shadow-sm transition ${
                   actorExplorerOpen && isActorLayerHighlighted("actor_logits")
                     ? "border-primary bg-primary/16 text-primary"
                     : "border-primary bg-base-100/95 text-base-content/85 hover:bg-primary/6"
@@ -565,8 +536,6 @@ export default function Agent({ expanded, onExpandedChange, anchorRef, criticOut
                             ? 0.34
                             : fadedOpacity * 0.22
                   }
-                  onMouseEnter={() => setHoverText(tip)}
-                  onMouseLeave={() => setHoverText(null)}
                   onClick={
                     actorRouteId
                       ? () => openActorExplorer(actorStageFromRoute(actorRouteId))
@@ -581,12 +550,12 @@ export default function Agent({ expanded, onExpandedChange, anchorRef, criticOut
           </g>
 
           <g>
-            <foreignObject x={geometry.x.obs - 28} y={geometry.y.shared - 74} width={122} height={44}>
+            <foreignObject x={geometry.x.obs - 22} y={geometry.y.shared - 60} width={122} height={44}>
               <button
                 type="button"
                 data-agent-interactive="true"
                 onClick={() => openActorExplorer("obs")}
-                className={`badge badge-sm badge-outline flex h-10 w-full cursor-pointer items-center justify-center px-3 text-[11px] font-medium shadow-sm transition ${
+                className={`badge badge-sm badge-outline flex h-8 cursor-pointer items-center justify-center px-3 text-[11px] font-medium shadow-sm transition ${
                   actorExplorerOpen && isActorLayerHighlighted("obs")
                     ? "border-primary bg-primary/16 text-primary"
                     : "border-primary bg-base-100/95 text-base-content/85 hover:bg-primary/6"
@@ -662,8 +631,6 @@ export default function Agent({ expanded, onExpandedChange, anchorRef, criticOut
                                   ? 1
                                   : fadedOpacity
                         }
-                        onMouseEnter={() => setHoverText(`${layer.label} layer ${segment.label}`)}
-                        onMouseLeave={() => setHoverText(null)}
                         onClick={
                           actorStage
                             ? () => openActorExplorer(actorStage)
@@ -685,7 +652,7 @@ export default function Agent({ expanded, onExpandedChange, anchorRef, criticOut
               <foreignObject key={item.key} x={item.x} y={criticBandY} width={item.width} height={criticBandHeight}>
                 <div
                   data-agent-interactive={item.key === "critic_value" ? "true" : undefined}
-                  className={`badge badge-sm badge-outline flex h-10 w-full items-center justify-center px-3 text-[11px] font-medium shadow-sm ${
+                  className={`badge badge-sm badge-outline flex h-8 items-center justify-center px-3 text-[11px] font-medium shadow-sm ${
                     item.key === "critic_value"
                       ? "cursor-pointer border-primary bg-base-100/95 text-base-content/90"
                       : "border-primary bg-base-100/95 text-base-content/85"
@@ -697,24 +664,6 @@ export default function Agent({ expanded, onExpandedChange, anchorRef, criticOut
               </foreignObject>
             ))}
           </g>
-
-          {!actorExplorerOpen && !diagnosticsOpen ? (
-            <foreignObject x={hoverBox.x} y={hoverBox.y} width={hoverBox.width} height={hoverBox.height}>
-              <div
-                className={`rounded-2xl bg-primary/10 px-3 py-2 text-[11px] leading-snug text-primary transition-opacity ${
-                  hoverText ? "opacity-100" : "opacity-0"
-                }`}
-              >
-                <span className="line-clamp-2">{hoverText ?? " "}</span>
-              </div>
-            </foreignObject>
-          ) : null}
-
-          <foreignObject x={padding.left} y={descriptionY} width={expandedWidth - padding.left - padding.right} height={40}>
-            <div className="text-[11px] leading-relaxed text-base-content/70 sm:text-xs">
-              输入观测 s 来自环境状态向量（16 维）；随后分别进入 actor 与 critic 分支，隐藏层为 64 维，最终 actor 输出 4 维 logits（对应动作），critic 输出 1 维状态价值 V(s)。
-            </div>
-          </foreignObject>
         </svg>
 
         <ActorFormulaExplorer
@@ -783,27 +732,9 @@ export default function Agent({ expanded, onExpandedChange, anchorRef, criticOut
         open={diagnosticsOpen}
         onClose={closeCriticDiagnostics}
         title="Critic diagnostics"
-        subtitle={hoverState ? `Step ${hoverState.step}` : "Hover the curves to inspect the critic branch."}
+        subtitle={hoverState ? `Step ${hoverState.step}` : `Step ${step}`}
       >
         <div className="space-y-3">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="space-y-1 text-xs text-base-content/70">
-              <div>
-                <span className="font-semibold text-primary">value_loss:</span>{" "}
-                {activeValueLossPoint ? formatMetricValue("value_loss", activeValueLossPoint.value) : "--"}
-              </div>
-              <div>
-                <span className="font-semibold text-info">explained_variance:</span>{" "}
-                {activeExplainedVariancePoint
-                  ? formatMetricValue("explained_variance", activeExplainedVariancePoint.value)
-                  : "--"}
-              </div>
-            </div>
-            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${summaryToneClass}`}>
-              {criticSummary.label}
-            </span>
-          </div>
-
           {diagnosticsLoading ? (
             <div className="rounded-xl border border-dashed border-primary/25 bg-primary/5 px-4 py-8 text-sm text-base-content/65">
               Loading critic diagnostics...
@@ -823,6 +754,7 @@ export default function Agent({ expanded, onExpandedChange, anchorRef, criticOut
                   hoverState={hoverState}
                   onHoverChange={setHoverState}
                   valueFormatter={(value) => formatMetricValue("value_loss", value)}
+                  currentStep={step}
                   isEmphasized={hoverState?.metricId === "value_loss"}
                 />
                 <MetricMiniChart
@@ -833,18 +765,18 @@ export default function Agent({ expanded, onExpandedChange, anchorRef, criticOut
                   hoverState={hoverState}
                   onHoverChange={setHoverState}
                   valueFormatter={(value) => formatMetricValue("explained_variance", value)}
+                  currentStep={step}
                   referenceValue={0.3}
-                  referenceLabel="healthy fit"
                   isEmphasized={hoverState?.metricId === "explained_variance"}
                 />
               </div>
 
-              <div className="rounded-xl border border-primary/15 bg-primary/8 px-4 py-3 text-sm text-base-content/75">
+              <div className="rounded-xl border border-primary/15 bg-primary/8 px-4 py-3 text-sm text-base-content/75 h-11">
                 {hoverState?.metricId === "explained_variance" && activeExplainedVariancePoint
                   ? explainMetricValue("explained_variance", activeExplainedVariancePoint.value)
                   : hoverState?.metricId === "value_loss" && activeValueLossPoint
                     ? explainMetricValue("value_loss", activeValueLossPoint.value)
-                    : "这组样例里的 critic 还没完全跟上，explained_variance 早期接近 0，value_loss 也保持着明显波动。"}
+                    : null}
               </div>
             </div>
           )}

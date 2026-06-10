@@ -53,7 +53,7 @@ export default function Action({ probs = [0.15, 0.4, 0.2, 0.25], sampledIndex = 
   return (
     <div
       ref={(node) => setRefValue(anchorRef, node)}
-      className="-ml-16 rounded-2xl border-2 border-accent bg-accent/10 px-4 py-3 shadow-md tooltip tooltip-open tooltip-accent"
+      className="tooltip tooltip-open tooltip-accent rounded-2xl border-2 border-accent bg-accent/10 px-4 py-3 shadow-md"
       data-tip={`π：\n整个动作的概率分布`}
     >
       <div className="items-center gap-3 flex flex-col">

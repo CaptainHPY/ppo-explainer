@@ -24,17 +24,20 @@ type SegmentPlacement = {
   rotation: number;
 };
 
-type BiasPlacement = SegmentPlacement & {
-  paddingX: number;
-  paddingY: number;
-};
-
-const VIEWBOX = { width: 1420, height: 860 };
-const CENTER_SIDE = 320;
+const VIEWBOX = { width: 1540, height: 920 };
+const CENTER_SIDE = 360;
 const SQRT2 = Math.sqrt(2);
 
 function formatNumber(value: number, digits = 2) {
   return value.toFixed(digits);
+}
+
+function transposeMatrix(values: number[][]) {
+  const rows = values.length;
+  const cols = values[0]?.length ?? 0;
+  return Array.from({ length: cols }, (_, colIndex) =>
+    Array.from({ length: rows }, (_, rowIndex) => values[rowIndex]?.[colIndex] ?? 0),
+  );
 }
 
 function valueToColor(value: number, domain: number) {
@@ -91,7 +94,7 @@ function MatrixWaveColorLegend({ domain }: { domain: number }) {
       <span className="text-xs font-semibold tracking-[0.16em] text-base-content/58 [writing-mode:vertical-rl]">
         色度标尺
       </span>
-      <svg viewBox="0 0 78 320" className="h-[420px] w-[78px]">
+      <svg viewBox="0 0 78 340" className="h-[470px] w-[82px]">
         <defs>
           <linearGradient id={gradientId} x1="0%" y1="100%" x2="0%" y2="0%">
             <stop offset="0%" stopColor={valueToColor(-domain, domain)} />
@@ -99,18 +102,46 @@ function MatrixWaveColorLegend({ domain }: { domain: number }) {
             <stop offset="100%" stopColor={valueToColor(domain, domain)} />
           </linearGradient>
         </defs>
-        <rect x="20" y="16" width="18" height="268" rx="9" fill={`url(#${gradientId})`} stroke="rgba(15,23,42,0.10)" />
-        <text x="48" y="24" fontSize="11" fill="currentColor">
+        <rect x="20" y="18" width="18" height="288" rx="9" fill={`url(#${gradientId})`} stroke="rgba(15,23,42,0.10)" />
+        <text x="48" y="26" fontSize="11" fill="currentColor">
           +{formatNumber(domain)}
         </text>
-        <text x="48" y="154" fontSize="11" fill="currentColor">
+        <text x="48" y="166" fontSize="11" fill="currentColor">
           0
         </text>
-        <text x="48" y="286" fontSize="11" fill="currentColor">
+        <text x="48" y="308" fontSize="11" fill="currentColor">
           -{formatNumber(domain)}
         </text>
       </svg>
     </div>
+  );
+}
+
+function EdgeTickMarks({
+  count,
+  width,
+  label,
+}: {
+  count: number;
+  width: number;
+  label: string;
+}) {
+  const safeCount = Math.max(1, count);
+  const left = 24;
+  const right = width - 24;
+  const span = right - left;
+
+  return (
+    <g>
+      <line x1={left} y1={10} x2={right} y2={10} stroke="rgba(15,23,42,0.18)" strokeWidth="1.2" />
+      {Array.from({ length: safeCount }, (_, index) => {
+        const x = safeCount === 1 ? (left + right) / 2 : left + (span * index) / (safeCount - 1);
+        return <line key={index} x1={x} y1={6} x2={x} y2={14} stroke="rgba(15,23,42,0.28)" strokeWidth="1.2" />;
+      })}
+      <text x={width / 2} y={-6} textAnchor="middle" fontSize="11" fill="rgba(15,23,42,0.64)">
+        {label}
+      </text>
+    </g>
   );
 }
 
@@ -119,16 +150,24 @@ function MatrixSegment({
   placement,
   attachSide,
   domain,
+  displayValues,
+  edgeTickLabel,
+  edgeTickCount,
 }: {
   segment: MatrixWaveSegmentData;
   placement: SegmentPlacement;
   attachSide: "left" | "right";
   domain: number;
+  displayValues?: number[][];
+  edgeTickLabel?: string;
+  edgeTickCount?: number;
 }) {
   const transform =
     attachSide === "right"
       ? `translate(${placement.x} ${placement.y}) rotate(${placement.rotation}) translate(${-placement.width} ${-placement.height / 2})`
       : `translate(${placement.x} ${placement.y}) rotate(${placement.rotation}) translate(0 ${-placement.height / 2})`;
+
+  const values = displayValues ?? segment.values;
 
   return (
     <g transform={transform}>
@@ -142,11 +181,12 @@ function MatrixSegment({
         stroke="rgba(76,120,216,0.24)"
         strokeWidth="2.4"
       />
-      <g transform="translate(14 14)">
+      {edgeTickLabel && edgeTickCount ? <EdgeTickMarks count={edgeTickCount} width={placement.width} label={edgeTickLabel} /> : null}
+      <g transform="translate(14 22)">
         {drawMatrixCells({
-          values: segment.values,
+          values,
           width: placement.width - 28,
-          height: placement.height - 28,
+          height: placement.height - 36,
           domain,
         })}
       </g>
@@ -156,36 +196,35 @@ function MatrixSegment({
 
 function BiasStrip({
   bias,
-  placement,
-  attachSide,
+  x,
+  y,
+  width,
+  height,
   domain,
 }: {
   bias: MatrixWaveBiasStripData;
-  placement: BiasPlacement;
-  attachSide: "left" | "right";
+  x: number;
+  y: number;
+  width: number;
+  height: number;
   domain: number;
 }) {
-  const transform =
-    attachSide === "right"
-      ? `translate(${placement.x} ${placement.y}) rotate(${placement.rotation}) translate(${-placement.width} ${-placement.height / 2})`
-      : `translate(${placement.x} ${placement.y}) rotate(${placement.rotation}) translate(0 ${-placement.height / 2})`;
-
   return (
-    <g transform={transform} opacity="0.92">
+    <g opacity="0.92">
       <rect
-        x={0}
-        y={0}
-        width={placement.width}
-        height={placement.height}
-        rx={placement.height / 2}
+        x={x - width / 2}
+        y={y - height / 2}
+        width={width}
+        height={height}
+        rx={height / 2}
         fill="rgba(255,255,255,0.88)"
         stroke="rgba(15,23,42,0.12)"
       />
-      <g transform={`translate(${placement.paddingX} ${placement.paddingY})`}>
+      <g transform={`translate(${x - width / 2 + 5} ${y - height / 2 + 4})`}>
         {drawMatrixCells({
           values: bias.values,
-          width: placement.width - placement.paddingX * 2,
-          height: placement.height - placement.paddingY * 2,
+          width: width - 10,
+          height: height - 8,
           domain,
         })}
       </g>
@@ -203,10 +242,11 @@ function VShapeMatrixWave({
   domain: number;
 }) {
   const [leftSegment, centerSegment, rightSegment] = segments;
-  const [leftBias, centerBias, rightBias] = biases;
+  const [, centerBias] = biases;
+  const rightDisplayValues = transposeMatrix(rightSegment.values);
 
-  const centerX = 710;
-  const centerY = 530;
+  const centerX = 770;
+  const centerY = 565;
   const diamondHalf = (CENTER_SIDE * SQRT2) / 2;
   const top = { x: centerX, y: centerY - diamondHalf };
   const right = { x: centerX + diamondHalf, y: centerY };
@@ -217,50 +257,22 @@ function VShapeMatrixWave({
   const leftPlacement: SegmentPlacement = {
     x: topLeftMid.x,
     y: topLeftMid.y,
-    width: 176,
+    width: 198,
     height: CENTER_SIDE,
     rotation: 45,
   };
   const rightPlacement: SegmentPlacement = {
     x: topRightMid.x,
     y: topRightMid.y,
-    width: 160,
+    width: 188,
     height: CENTER_SIDE,
     rotation: -45,
-  };
-
-  const leftBiasPlacement: BiasPlacement = {
-    x: topLeftMid.x - 46,
-    y: topLeftMid.y - 44,
-    width: 122,
-    height: 22,
-    rotation: 45,
-    paddingX: 5,
-    paddingY: 4,
-  };
-  const centerBiasPlacement: BiasPlacement = {
-    x: centerX,
-    y: centerY + diamondHalf + 54,
-    width: 168,
-    height: 22,
-    rotation: 0,
-    paddingX: 5,
-    paddingY: 4,
-  };
-  const rightBiasPlacement: BiasPlacement = {
-    x: topRightMid.x + 46,
-    y: topRightMid.y - 44,
-    width: 112,
-    height: 22,
-    rotation: -45,
-    paddingX: 5,
-    paddingY: 4,
   };
 
   return (
     <svg
       viewBox={`0 0 ${VIEWBOX.width} ${VIEWBOX.height}`}
-      className="h-[72vh] min-h-[620px] w-full"
+      className="h-[78vh] min-h-[700px] w-full"
       role="img"
       aria-label="V 形 MatrixWave 权重图"
       data-testid="matrixwave-canvas"
@@ -268,15 +280,22 @@ function VShapeMatrixWave({
       <title>V 形 MatrixWave 权重图</title>
 
       <path
-        d={`M ${left.x - 242} ${left.y - 248} L ${topLeftMid.x} ${topLeftMid.y} L ${topRightMid.x} ${topRightMid.y} L ${right.x + 242} ${right.y - 248}`}
+        d={`M ${left.x - 284} ${left.y - 274} L ${topLeftMid.x} ${topLeftMid.y} L ${topRightMid.x} ${topRightMid.y} L ${right.x + 284} ${right.y - 274}`}
         fill="none"
         stroke="rgba(76,120,216,0.12)"
-        strokeWidth="9"
+        strokeWidth="10"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
 
-      <MatrixSegment segment={leftSegment} placement={leftPlacement} attachSide="right" domain={domain} />
+      <MatrixSegment
+        segment={leftSegment}
+        placement={leftPlacement}
+        attachSide="right"
+        domain={domain}
+        edgeTickCount={leftSegment.shape[1] ?? 4}
+        edgeTickLabel={`obs · ${leftSegment.shape[1] ?? 4}`}
+      />
 
       <g transform={`translate(${centerX} ${centerY}) rotate(45) translate(${-CENTER_SIDE / 2} ${-CENTER_SIDE / 2})`}>
         <rect
@@ -289,50 +308,49 @@ function VShapeMatrixWave({
           stroke="rgba(76,120,216,0.24)"
           strokeWidth="2.8"
         />
-        <g transform="translate(16 16)">
+        <g transform="translate(18 18)">
           {drawMatrixCells({
             values: centerSegment.values,
-            width: CENTER_SIDE - 32,
-            height: CENTER_SIDE - 32,
+            width: CENTER_SIDE - 36,
+            height: CENTER_SIDE - 36,
             domain,
           })}
         </g>
       </g>
 
-      <MatrixSegment segment={rightSegment} placement={rightPlacement} attachSide="left" domain={domain} />
+      <MatrixSegment
+        segment={rightSegment}
+        placement={rightPlacement}
+        attachSide="left"
+        domain={domain}
+        displayValues={rightDisplayValues}
+        edgeTickCount={rightSegment.shape[0] ?? 2}
+        edgeTickLabel={`out · ${rightSegment.shape[0] ?? 2}`}
+      />
 
-      <BiasStrip bias={leftBias} placement={leftBiasPlacement} attachSide="right" domain={domain} />
-      <BiasStrip bias={centerBias} placement={centerBiasPlacement} attachSide="left" domain={domain} />
-      <BiasStrip bias={rightBias} placement={rightBiasPlacement} attachSide="left" domain={domain} />
+      <BiasStrip
+        bias={centerBias}
+        x={centerX}
+        y={centerY + diamondHalf + 60}
+        width={184}
+        height={24}
+        domain={domain}
+      />
 
-      <text x={topLeftMid.x - 2} y={topLeftMid.y - 138} textAnchor="middle" fontSize="13" fill="rgba(15,23,42,0.72)">
+      <text x={topLeftMid.x - 8} y={topLeftMid.y - 148} textAnchor="middle" fontSize="13" fill="rgba(15,23,42,0.72)">
         {leftSegment.label}
       </text>
-      <text x={centerX} y={centerY - diamondHalf - 22} textAnchor="middle" fontSize="13" fill="rgba(15,23,42,0.72)">
+      <text x={centerX} y={centerY - diamondHalf - 24} textAnchor="middle" fontSize="13" fill="rgba(15,23,42,0.72)">
         {centerSegment.label}
       </text>
-      <text x={topRightMid.x + 2} y={topRightMid.y - 138} textAnchor="middle" fontSize="13" fill="rgba(15,23,42,0.72)">
+      <text x={topRightMid.x + 8} y={topRightMid.y - 148} textAnchor="middle" fontSize="13" fill="rgba(15,23,42,0.72)">
         {rightSegment.label}
       </text>
 
-      <text x="112" y="242" fontSize="20" fontWeight="600" fill="rgba(15,23,42,0.82)">
-        input
-      </text>
-      <text x="154" y="270" fontSize="13" fill="rgba(15,23,42,0.62)">
-        obs
-      </text>
-
-      <text x="1262" y="242" textAnchor="end" fontSize="20" fontWeight="600" fill="rgba(15,23,42,0.82)">
-        output
-      </text>
-      <text x="1214" y="270" textAnchor="end" fontSize="13" fill="rgba(15,23,42,0.62)">
-        out
-      </text>
-
-      <text x={topLeftMid.x - 22} y={topLeftMid.y - 118} textAnchor="middle" fontSize="13" fill="rgba(15,23,42,0.62)">
+      <text x={topLeftMid.x - 28} y={topLeftMid.y - 122} textAnchor="middle" fontSize="13" fill="rgba(15,23,42,0.62)">
         fc1
       </text>
-      <text x={topRightMid.x + 22} y={topRightMid.y - 118} textAnchor="middle" fontSize="13" fill="rgba(15,23,42,0.62)">
+      <text x={topRightMid.x + 28} y={topRightMid.y - 122} textAnchor="middle" fontSize="13" fill="rgba(15,23,42,0.62)">
         fc2
       </text>
     </svg>
@@ -357,14 +375,14 @@ export default function NetworkMatrixWaveModal({ state, onClose }: NetworkMatrix
       onClose={onClose}
       title={`${modalData.phaseLabel} · ${modalData.networkTitle} MatrixWave`}
       subtitle={modalData.description}
-      maxWidthClass="max-w-[1280px]"
+      maxWidthClass="max-w-[1380px]"
     >
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_92px]">
-        <div className="rounded-2xl border border-base-300 bg-base-200/55 p-5">
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_88px]">
+        <div className="rounded-2xl border border-base-300 bg-base-200/55 p-4">
           <VShapeMatrixWave segments={modalData.segments} biases={modalData.biases} domain={modalData.colorDomain} />
         </div>
 
-        <aside className="rounded-2xl border border-base-300 bg-base-100 px-2 py-4">
+        <aside className="rounded-2xl border border-base-300 bg-base-100 px-1 py-3">
           <MatrixWaveColorLegend domain={modalData.colorDomain} />
         </aside>
       </div>

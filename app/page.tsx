@@ -1,18 +1,26 @@
-﻿"use client";
+"use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FiGithub } from "react-icons/fi";
 
-import Agent from "@/components/agent/Agent";
 import Action from "@/components/Action";
+import Agent from "@/components/agent/Agent";
 import Buffer from "@/components/Buffer";
 import Controller, { DEFAULT_STEP } from "@/components/Controller";
 import Environment from "@/components/Env";
+import PPOStoryPanel, { type NarrativeSectionId } from "@/components/PPOStoryPanel";
+
+function clamp(value: number, min = 0, max = 1) {
+  return Math.min(max, Math.max(min, value));
+}
 
 export default function HomePage() {
   const [expanded, setExpanded] = useState(false);
   const [isPlaying, setIsPlaying] = useState(true);
   const [step, setStep] = useState(DEFAULT_STEP);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [activeNarrativeSection, setActiveNarrativeSection] = useState<NarrativeSectionId>("overview");
+  const narrativeRef = useRef<HTMLDivElement | null>(null);
   const mockupHeight = expanded ? 750 : 550;
   const mockupWidth = expanded ? 2000 : 1350;
   const feedbackPath = expanded
@@ -22,6 +30,63 @@ export default function HomePage() {
   function handleCollapseToHome() {
     setExpanded(false);
   }
+
+  useEffect(() => {
+    function updateScrollState() {
+      const narrative = narrativeRef.current;
+      if (!narrative) {
+        setScrollProgress(0);
+        return;
+      }
+
+      const scrollY = window.scrollY;
+      const narrativeTop = narrative.offsetTop;
+      const narrativeHeight = narrative.offsetHeight;
+      const viewportHeight = window.innerHeight;
+      const progressStart = narrativeTop - viewportHeight * 0.72;
+      const progressRange = Math.max(narrativeHeight, viewportHeight * 1.4);
+      const progress = clamp((scrollY - progressStart) / progressRange);
+      setScrollProgress(progress);
+
+      const sections = Array.from(
+        narrative.querySelectorAll<HTMLElement>("[data-story-section]"),
+      );
+
+      if (!sections.length) {
+        return;
+      }
+
+      let nextActive: NarrativeSectionId = "overview";
+      let bestDistance = Number.POSITIVE_INFINITY;
+      const focusY = viewportHeight * 0.42;
+
+      for (const section of sections) {
+        const rect = section.getBoundingClientRect();
+        const distance = Math.abs(rect.top - focusY);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          const id = section.dataset.storySection;
+          if (id === "overview" || id === "phases" || id === "mapping") {
+            nextActive = id;
+          }
+        }
+      }
+
+      setActiveNarrativeSection(nextActive);
+    }
+
+    updateScrollState();
+    window.addEventListener("scroll", updateScrollState, { passive: true });
+    window.addEventListener("resize", updateScrollState);
+    return () => {
+      window.removeEventListener("scroll", updateScrollState);
+      window.removeEventListener("resize", updateScrollState);
+    };
+  }, []);
+
+  const visualizationScale = useMemo(() => 1 - scrollProgress * 0.08, [scrollProgress]);
+  const visualizationOpacity = useMemo(() => 1 - scrollProgress * 0.06, [scrollProgress]);
+  const promptOpacity = useMemo(() => 1 - scrollProgress * 1.8, [scrollProgress]);
 
   return (
     <>
@@ -38,166 +103,204 @@ export default function HomePage() {
         }
       `}</style>
 
-      <div className="flex flex-1 flex-col overflow-x-auto overflow-y-visible bg-base-200 px-4 py-6 sm:px-6">
-        <div className="w-max min-w-full max-w-none space-y-6 overflow-visible">
-          <div className="card-body items-center gap-5">
-            <p className="text-6xl font-bold tracking-tight text-base-content sm:text-6xl font-[family-name:var(--font-hypixel)]">
-              PPO Explainer
-            </p>
-
-            <p className="text-2xl text-base-content/70">
-              Learn How PPO Works with Interactive Visualization
-            </p>
-
-            <p className="text-base-content/70 text-xl flex items-center gap-2">
-              <FiGithub />
-               <a className="hover:underline hover:underline-offset-4" href="https://github.com/CaptainHPY">Code</a>
-            </p>
-          </div>
-
-          <Controller
-            isPlaying={isPlaying}
-            step={step}
-            onPlayingChange={setIsPlaying}
-            onStepChange={setStep}
-          />
+      <div className="min-h-[320vh] bg-base-200">
+        <section className="sticky top-0 z-10 flex min-h-screen items-start justify-center overflow-hidden px-4 py-6 sm:px-6">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(76,120,216,0.10),transparent_45%)]" />
 
           <div
-            className="relative mx-auto grid items-center gap-6 overflow-visible px-6 py-10 shadow-xl"
+            className="relative z-10 w-full transition-transform duration-300 ease-out"
             style={{
-              width: mockupWidth,
-              height: mockupHeight,
-              gridTemplateColumns: expanded ? "804px 460px 460px" : "220px 460px 460px",
+              transform: `scale(${visualizationScale})`,
+              transformOrigin: "center top",
+              opacity: visualizationOpacity,
             }}
           >
-            {expanded ? (
-              <button
-                type="button"
-                aria-label="Return to compact agent"
-                onClick={handleCollapseToHome}
-                className="absolute inset-0 z-10 bg-transparent"
-              />
-            ) : null}
+            <div className="mx-auto w-max min-w-full max-w-none space-y-6 overflow-visible">
+              <div className="card-body items-center gap-5">
+                <p className="font-[family-name:var(--font-hypixel)] text-6xl font-bold tracking-tight text-base-content sm:text-6xl">
+                  PPO Explainer
+                </p>
 
-            <svg
-              className={`pointer-events-none absolute inset-0 ${expanded ? "mt-44 ml-28" : "-mt-2 ml-18"}`}
-              style={{
-                width: "100%",
-                height: "600px",
-                zIndex: 0,
-              }}
-              viewBox={`0 0 ${mockupWidth} 600`}
-              preserveAspectRatio="none"
-              aria-hidden="true"
-            >
-              <defs>
-                <marker
-                  id="arrowhead-feedback"
-                  markerWidth="10"
-                  markerHeight="10"
-                  refX="9"
-                  refY="3"
-                  orient="auto"
+                <p className="text-2xl text-base-content/70">
+                  Learn How PPO Works with Interactive Visualization
+                </p>
+
+                <p className="flex items-center gap-2 text-xl text-base-content/70">
+                  <FiGithub />
+                  <a className="hover:underline hover:underline-offset-4" href="https://github.com/CaptainHPY">
+                    Code
+                  </a>
+                </p>
+              </div>
+
+              <Controller
+                isPlaying={isPlaying}
+                step={step}
+                onPlayingChange={setIsPlaying}
+                onStepChange={setStep}
+              />
+
+              <div
+                className="relative mx-auto grid items-center gap-6 overflow-visible px-6 py-10 shadow-xl"
+                style={{
+                  width: mockupWidth,
+                  height: mockupHeight,
+                  gridTemplateColumns: expanded ? "804px 460px 460px" : "220px 460px 460px",
+                }}
+              >
+                {expanded ? (
+                  <button
+                    type="button"
+                    aria-label="Return to compact agent"
+                    onClick={handleCollapseToHome}
+                    className="absolute inset-0 z-10 bg-transparent"
+                  />
+                ) : null}
+
+                <svg
+                  className={`pointer-events-none absolute inset-0 ${expanded ? "mt-44 ml-28" : "-mt-2 ml-18"}`}
+                  style={{
+                    width: "100%",
+                    height: "600px",
+                    zIndex: 0,
+                  }}
+                  viewBox={`0 0 ${mockupWidth} 600`}
+                  preserveAspectRatio="none"
+                  aria-hidden="true"
                 >
-                  <polygon points="0 0, 10 3, 0 6" fill="var(--color-secondary)" />
-                </marker>
-              </defs>
-              <path
-                d={feedbackPath}
-                stroke="var(--color-secondary)"
-                strokeWidth="3"
-                fill="none"
-                markerEnd="url(#arrowhead-feedback)"
-                strokeDasharray="8,6"
-                strokeLinecap="round"
-                className="dash-animation"
-              />
-            </svg>
+                  <defs>
+                    <marker
+                      id="arrowhead-feedback"
+                      markerWidth="10"
+                      markerHeight="10"
+                      refX="9"
+                      refY="3"
+                      orient="auto"
+                    >
+                      <polygon points="0 0, 10 3, 0 6" fill="var(--color-secondary)" />
+                    </marker>
+                  </defs>
+                  <path
+                    d={feedbackPath}
+                    stroke="var(--color-secondary)"
+                    strokeWidth="3"
+                    fill="none"
+                    markerEnd="url(#arrowhead-feedback)"
+                    strokeDasharray="8,6"
+                    strokeLinecap="round"
+                    className="dash-animation"
+                  />
+                </svg>
 
-            <div className={`relative z-20 flex items-center justify-center ${expanded ? "left-22 -top-8" : "left-10 -top-12"}`}>
-              <Agent expanded={expanded} step={step} onExpandedChange={setExpanded} />
-            </div>
+                <div
+                  className={`relative z-20 flex items-center justify-center ${expanded ? "left-22 -top-8" : "left-10 -top-12"}`}
+                >
+                  <Agent expanded={expanded} step={step} onExpandedChange={setExpanded} />
+                </div>
 
-            <div className={`relative z-20 flex min-w-0 items-center justify-center ${expanded ? "left-110 -top-24" : "left-108 -top-20"}`}>
-              <svg className="h-8 w-26 shrink-0 text-primary" viewBox="0 0 100 32" aria-hidden="true">
-                <line
-                  x1="0"
-                  y1="16"
-                  x2="100"
-                  y2="16"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeDasharray="4,3"
-                  className="dash-animation"
-                />
-                <polygon points="100,16 94,12 94,20" fill="currentColor" />
-              </svg>
+                <div
+                  className={`relative z-20 flex min-w-0 items-center justify-center ${expanded ? "left-110 -top-24" : "left-108 -top-20"}`}
+                >
+                  <svg className="h-8 w-26 shrink-0 text-primary" viewBox="0 0 100 32" aria-hidden="true">
+                    <line
+                      x1="0"
+                      y1="16"
+                      x2="100"
+                      y2="16"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeDasharray="4,3"
+                      className="dash-animation"
+                    />
+                    <polygon points="100,16 94,12 94,20" fill="currentColor" />
+                  </svg>
 
-              <Action />
+                  <Action />
 
-              <svg className="h-8 w-7 shrink-0 text-accent" viewBox="0 0 28 32" aria-hidden="true">
-                <line
-                  x1="0"
-                  y1="16"
-                  x2="22"
-                  y2="16"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeDasharray="4,3"
-                  className="dash-animation"
-                />
-                <polygon points="28,16 22,12 22,20" fill="currentColor" />
-              </svg>
+                  <svg className="h-8 w-7 shrink-0 text-accent" viewBox="0 0 28 32" aria-hidden="true">
+                    <line
+                      x1="0"
+                      y1="16"
+                      x2="22"
+                      y2="16"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeDasharray="4,3"
+                      className="dash-animation"
+                    />
+                    <polygon points="28,16 22,12 22,20" fill="currentColor" />
+                  </svg>
 
-              <Environment step={step} />
+                  <Environment step={step} />
 
-              <svg 
-                className={`h-8 w-32 shrink-0 text-accent ${expanded ? "-translate-x-4" : "-translate-x-2"}`}
-                viewBox={expanded ? "0 0 100 32" : "0 0 110 32"}
-                aria-hidden="true"
+                  <svg
+                    className={`h-8 w-32 shrink-0 text-accent ${expanded ? "-translate-x-4" : "-translate-x-2"}`}
+                    viewBox={expanded ? "0 0 100 32" : "0 0 110 32"}
+                    aria-hidden="true"
+                  >
+                    <line
+                      x1="0"
+                      y1="16"
+                      x2={expanded ? "100" : "110"}
+                      y2="16"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeDasharray="4,3"
+                      className="dash-animation"
+                    />
+                    <polygon
+                      points={expanded ? "100,16 94,12 94,20" : "110,16 104,12 104,20"}
+                      fill="currentColor"
+                    />
+                  </svg>
+
+                  <svg
+                    className={`h-8 w-170 shrink-0 text-primary ${expanded ? "mt-64 -translate-x-172" : "mt-50 -translate-x-170"}`}
+                    viewBox={expanded ? "0 0 620 32" : "0 0 630 32"}
+                    aria-hidden="true"
+                  >
+                    <line
+                      x1="0"
+                      y1="12"
+                      x2={expanded ? "620" : "630"}
+                      y2="12"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeDasharray="4,3"
+                      className="dash-animation"
+                    />
+                    <polygon
+                      points={expanded ? "620,12 614,8 614,16" : "630,12 624,8 624,16"}
+                      fill="currentColor"
+                    />
+                  </svg>
+                </div>
+
+                <div className="relative z-20">
+                  <Buffer expanded={expanded} step={step} />
+                </div>
+              </div>
+
+              <div
+                className="flex justify-center pb-4 transition-opacity duration-300"
+                style={{ opacity: promptOpacity }}
               >
-                <line
-                  x1="0"
-                  y1="16"
-                  x2={expanded ? "100" : "110"}
-                  y2="16"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeDasharray="4,3"
-                  className="dash-animation"
-                />
-                <polygon points={expanded ? "100,16 94,12 94,20" : "110,16 104,12 104,20"} fill="currentColor" />
-              </svg>
-
-              <svg
-                className={`h-8 w-170 shrink-0 text-primary ${expanded ? "mt-64 -translate-x-172" : "mt-50 -translate-x-170"}`}
-                viewBox={expanded ? "0 0 620 32" : "0 0 630 32"}
-                aria-hidden="true"
-              >
-                <line
-                  x1="0"
-                  y1="12"
-                  x2={expanded ? "620" : "630"}
-                  y2="12"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeDasharray="4,3"
-                  className="dash-animation"
-                />
-                <polygon
-                  points={expanded ? "620,12 614,8 614,16" : "630,12 624,8 624,16"}
-                  fill="currentColor"
-                />
-              </svg>
+                <div className="rounded-full border border-primary/20 bg-base-100/72 px-4 py-2 text-sm text-base-content/60 shadow-sm">
+                  向下滚动查看 PPO 解释文字
+                </div>
+              </div>
             </div>
-
-            <div className="relative z-20">
-              <Buffer expanded={expanded} step={step} />
-            </div>
-
           </div>
+        </section>
 
-        </div>
+        <section
+          ref={narrativeRef}
+          className="relative z-20 mx-auto flex w-full max-w-6xl justify-center px-4 pb-24 pt-[88vh] sm:px-6 lg:px-8"
+        >
+          <div className="w-full">
+            <PPOStoryPanel activeSectionId={activeNarrativeSection} />
+          </div>
+        </section>
       </div>
     </>
   );

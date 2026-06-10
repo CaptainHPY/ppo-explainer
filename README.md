@@ -29,7 +29,7 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 
 ## TODOS
 
--   交互式可视化训练指标曲线(用d3库，单击联动模块展开)：
+- [x] 交互式可视化训练指标曲线(用d3库，单击联动模块展开)：
 
     第一优先级——策略更新是否过猛：approx_kl, clipfrac
 
@@ -51,4 +51,6 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
     
     (可视化所需训练指标均在public\data目录下)
 
--   交互式可视化Agent中actor分支的前向过程 (单击actor分支展开，公式用katex库，仿照[transformer-explainer](https://poloclub.github.io/transformer-explainer/)的MLP Expansion)
+- [x] 交互式可视化Agent中actor分支的前向过程 (单击actor分支展开，公式用katex库，仿照[transformer-explainer](https://poloclub.github.io/transformer-explainer/)的MLP Expansion)
+
+- [ ] 在page.tsx的第199行开始新引入一个组件，以文字形式简介PPO、用PPO训练cartpole在各个阶段的效果（分为前、中、后三个阶段，以每个阶段的训练指标作为依据）和我们的可视化工作，并加入高级可视化图表

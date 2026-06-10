@@ -1,11 +1,13 @@
 "use client";
 
+import { type NetworkKind, type TrainingPhaseId } from "@/lib/weightMatrix";
+
 export type NarrativeSectionId = "overview" | "phases" | "mapping";
 
 type PhaseCard = {
-  id: string;
+  id: TrainingPhaseId;
   title: string;
-  stepRange: string;
+  checkpointLabel: string;
   summary: string;
   evidence: string;
 };
@@ -13,6 +15,7 @@ type PhaseCard = {
 type PPOStoryPanelProps = {
   activeSectionId?: NarrativeSectionId;
   onOpenSpiral?: () => void;
+  onOpenMatrixWave?: (phaseId: TrainingPhaseId, networkKind: NetworkKind) => void;
 };
 
 const ppoOverview =
@@ -22,29 +25,26 @@ const phaseCards: PhaseCard[] = [
   {
     id: "early",
     title: "前期",
-    stepRange: "Step 51 - 1028",
-    summary:
-      "策略仍在积极试探，更新幅度相对更大；critic 对回报结构的拟合还比较弱，训练主要处在摸索有效更新方向的阶段。",
+    checkpointLabel: "训练 20000 步",
+    summary: "策略仍在积极试探，更新幅度相对更大；critic 对回报结构的拟合还比较弱，训练主要处在摸索有效更新方向的阶段。",
     evidence:
       "approx_kl 均值约 0.000713，为三段中最高；clipfrac 仍有可见波动；value_loss 均值约 69.20 最高；explained_variance 均值仅约 0.059，接近 0。",
   },
   {
     id: "middle",
     title: "中期",
-    stepRange: "Step 1039 - 1638",
-    summary:
-      "PPO 更新进入更稳的裁剪区间，策略步长明显收敛，critic 开始学到更有用的价值结构，训练节奏趋于平稳。",
+    checkpointLabel: "训练 40000 步",
+    summary: "PPO 更新进入更稳的裁剪区间，策略步长明显收敛，critic 开始学到更有用的价值结构，训练节奏趋于平稳。",
     evidence:
-      "approx_kl 均值降到约 0.000194；clipfrac 基本为 0；value_loss 均值回落到约 59.83；explained_variance 升至约 0.219。",
+      "approx_kl 均值降到约 0.000194，clipfrac 基本为 0，value_loss 均值回落到约 59.83，explained_variance 升至约 0.219。",
   },
   {
     id: "late",
     title: "后期",
-    stepRange: "Step 1649 - 2197",
-    summary:
-      "训练进入相对成熟阶段，策略更新保持保守且稳定，critic 的价值估计更可靠，整体优化已经不再依赖大幅策略摆动。",
+    checkpointLabel: "训练 100000 步",
+    summary: "训练进入相对成熟阶段，策略更新保持保守且稳定，critic 的价值估计更可靠，整体优化已经不再依赖大幅策略摆动。",
     evidence:
-      "approx_kl 维持低位，均值约 0.000281；clipfrac 仍接近 0；value_loss 进一步降到约 48.32；explained_variance 提升到约 0.324，为三段中最高。",
+      "approx_kl 维持低位，均值约 0.000281，clipfrac 仍接近 0，value_loss 进一步降到约 48.32，explained_variance 提升到约 0.324，为三段中最高。",
   },
 ];
 
@@ -57,9 +57,30 @@ function sectionShellClass(isActive: boolean) {
   ].join(" ");
 }
 
+function MatrixWaveTrigger({
+  phaseId,
+  networkKind,
+  onOpen,
+}: {
+  phaseId: TrainingPhaseId;
+  networkKind: NetworkKind;
+  onOpen?: (phaseId: TrainingPhaseId, networkKind: NetworkKind) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen?.(phaseId, networkKind)}
+      className="rounded-full border border-base-300 bg-base-100 px-3 py-1 text-[11px] font-semibold text-base-content/70 transition hover:border-primary/30 hover:text-primary"
+    >
+      {networkKind === "actor" ? "Actor" : "Critic"}
+    </button>
+  );
+}
+
 export default function PPOStoryPanel({
   activeSectionId = "overview",
   onOpenSpiral,
+  onOpenMatrixWave,
 }: PPOStoryPanelProps) {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-16">
@@ -76,7 +97,7 @@ export default function PPOStoryPanel({
       </article>
 
       <article data-story-section="phases" className={sectionShellClass(activeSectionId === "phases")}>
-        <div className="space-y-4">
+        <div className="space-y-6">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <h3 className="text-2xl font-semibold text-base-content sm:text-3xl">CartPole 训练三阶段</h3>
@@ -98,17 +119,23 @@ export default function PPOStoryPanel({
 
           <div className="grid gap-4 lg:grid-cols-3">
             {phaseCards.map((phase) => (
-              <article
-                key={phase.id}
-                className="flex h-full flex-col gap-3 rounded-2xl border border-base-300/80 bg-base-200/55 px-4 py-4"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-                    {phase.title}
-                  </span>
-                  <span className="text-[11px] font-medium text-base-content/45">{phase.stepRange}</span>
+              <article key={phase.id} className="flex h-full flex-col gap-3 rounded-2xl border border-base-300/80 bg-base-200/55 px-4 py-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-2">
+                    <span className="inline-flex rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                      {phase.title}
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      <MatrixWaveTrigger phaseId={phase.id} networkKind="actor" onOpen={onOpenMatrixWave} />
+                      <MatrixWaveTrigger phaseId={phase.id} networkKind="critic" onOpen={onOpenMatrixWave} />
+                    </div>
+                  </div>
+
+                  <span className="pt-1 text-[11px] font-medium text-base-content/45">{phase.checkpointLabel}</span>
                 </div>
+
                 <p className="text-sm leading-6 text-base-content/78">{phase.summary}</p>
+
                 <div className="rounded-xl border border-base-300/70 bg-base-100/70 px-3 py-3 text-xs leading-5 text-base-content/65">
                   <span className="font-semibold text-base-content/78">指标证据：</span>
                   {phase.evidence}

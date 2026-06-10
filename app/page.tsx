@@ -8,8 +8,10 @@ import Agent from "@/components/agent/Agent";
 import Buffer from "@/components/Buffer";
 import Controller, { DEFAULT_STEP } from "@/components/Controller";
 import Environment from "@/components/Env";
+import NetworkMatrixWaveModal from "@/components/NetworkMatrixWaveModal";
 import PPOStoryPanel, { type NarrativeSectionId } from "@/components/PPOStoryPanel";
 import SpiralTrainingModal from "@/components/SpiralTrainingModal";
+import type { MatrixWaveModalState } from "@/lib/weightMatrix";
 
 function clamp(value: number, min = 0, max = 1) {
   return Math.min(max, Math.max(min, value));
@@ -22,6 +24,7 @@ export default function HomePage() {
   const [scrollProgress, setScrollProgress] = useState(0);
   const [activeNarrativeSection, setActiveNarrativeSection] = useState<NarrativeSectionId>("overview");
   const [isSpiralOpen, setIsSpiralOpen] = useState(false);
+  const [matrixWaveModalState, setMatrixWaveModalState] = useState<MatrixWaveModalState>(null);
   const narrativeRef = useRef<HTMLDivElement | null>(null);
   const mockupHeight = expanded ? 750 : 550;
   const mockupWidth = expanded ? 2000 : 1350;
@@ -300,11 +303,13 @@ export default function HomePage() {
             <PPOStoryPanel
               activeSectionId={activeNarrativeSection}
               onOpenSpiral={() => setIsSpiralOpen(true)}
+              onOpenMatrixWave={(phaseId, networkKind) => setMatrixWaveModalState({ phaseId, networkKind })}
             />
           </div>
         </section>
 
         <SpiralTrainingModal open={isSpiralOpen} onClose={() => setIsSpiralOpen(false)} />
+        <NetworkMatrixWaveModal state={matrixWaveModalState} onClose={() => setMatrixWaveModalState(null)} />
       </div>
     </>
   );

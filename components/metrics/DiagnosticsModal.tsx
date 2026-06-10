@@ -9,6 +9,7 @@ type DiagnosticsModalProps = {
   subtitle?: string;
   onClose: () => void;
   children: ReactNode;
+  maxWidthClass?: string;
 };
 
 export default function DiagnosticsModal({
@@ -17,6 +18,7 @@ export default function DiagnosticsModal({
   subtitle,
   onClose,
   children,
+  maxWidthClass = "max-w-3xl",
 }: DiagnosticsModalProps) {
   const [mounted, setMounted] = useState(false);
 
@@ -57,7 +59,7 @@ export default function DiagnosticsModal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="relative z-10 flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-2xl"
+        className={`relative z-10 flex max-h-[85vh] w-full ${maxWidthClass} flex-col overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-2xl`}
       >
         <div className="flex items-start justify-between gap-4 border-b border-base-300/70 px-5 py-4">
           <div>

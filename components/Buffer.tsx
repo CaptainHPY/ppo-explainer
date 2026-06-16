@@ -60,7 +60,7 @@ export default function Buffer({ expanded, step }: { expanded: boolean; step: nu
       <div
         className="rounded-2xl border-2 border-secondary bg-secondary/10 px-6 py-5 shadow-md"
         style={{
-          marginTop: expanded ? -70 : -100,
+          marginTop: expanded ? -170 : -140,
           marginLeft: expanded ? 140 : 150,
           width: 400,
           height: expanded ? 450 : 290,

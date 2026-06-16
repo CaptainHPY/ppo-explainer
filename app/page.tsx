@@ -1,9 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FiGithub } from "react-icons/fi";
 
-import Action from "@/components/Action";
 import Agent from "@/components/agent/Agent";
 import Buffer from "@/components/Buffer";
 import Controller, { DEFAULT_STEP } from "@/components/Controller";
@@ -26,7 +25,7 @@ export default function HomePage() {
   const [isSpiralOpen, setIsSpiralOpen] = useState(false);
   const [matrixWaveModalState, setMatrixWaveModalState] = useState<MatrixWaveModalState>(null);
   const narrativeRef = useRef<HTMLDivElement | null>(null);
-  const mockupHeight = expanded ? 750 : 550;
+  const mockupHeight = expanded ? 700 : 500;
   const mockupWidth = expanded ? 2000 : 1350;
   const feedbackPath = expanded
     ? "M 1580 390 L 1580 520 Q 1580 550 1510 550 L 450 550 Q 400 550 400 500 L 400 390"
@@ -105,7 +104,7 @@ export default function HomePage() {
         }
       `}</style>
 
-      <div className="min-h-[320vh] bg-base-200">
+      <div className="min-h-[240vh] bg-base-200">
         <section className="sticky top-0 z-10 flex min-h-screen items-start justify-center overflow-hidden px-4 py-6 sm:px-6">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(76,120,216,0.10),transparent_45%)]" />
 
@@ -129,7 +128,7 @@ export default function HomePage() {
 
                 <p className="flex items-center gap-2 text-xl text-base-content/70">
                   <FiGithub />
-                  <a className="hover:underline hover:underline-offset-4" href="https://github.com/CaptainHPY">
+                  <a className="hover:underline hover:underline-offset-4" href="https://github.com/CaptainHPY/ppo-explainer">
                     Code
                   </a>
                 </p>
@@ -160,7 +159,7 @@ export default function HomePage() {
                 ) : null}
 
                 <svg
-                  className={`pointer-events-none absolute inset-0 ${expanded ? "mt-44 ml-28" : "-mt-2 ml-18"}`}
+                  className={`pointer-events-none absolute inset-0 ${expanded ? "mt-24 ml-28" : "-mt-16 ml-18"}`}
                   style={{
                     width: "100%",
                     height: "600px",
@@ -195,13 +194,13 @@ export default function HomePage() {
                 </svg>
 
                 <div
-                  className={`relative z-20 flex items-center justify-center ${expanded ? "left-22 -top-8" : "left-10 -top-12"}`}
+                  className={`relative z-20 flex items-center justify-center ${expanded ? "left-22 -top-20" : "left-10 -top-20"}`}
                 >
                   <Agent expanded={expanded} step={step} onExpandedChange={setExpanded} />
                 </div>
 
                 <div
-                  className={`relative z-20 flex min-w-0 items-center justify-center ${expanded ? "left-110 -top-24" : "left-108 -top-20"}`}
+                  className={`relative z-20 flex min-w-0 items-center justify-center left-106 ${expanded ? "-top-36" : "-top-28"}`}
                 >
                   <svg className="h-8 w-26 shrink-0 text-primary" viewBox="0 0 100 32" aria-hidden="true">
                     <line
@@ -217,7 +216,12 @@ export default function HomePage() {
                     <polygon points="100,16 94,12 94,20" fill="currentColor" />
                   </svg>
 
-                  <Action />
+                  <div
+                    className="tooltip tooltip-open tooltip-accent flex items-center justify-center rounded-2xl border-2 border-accent bg-accent/10 px-4 py-3 shadow-md min-w-40"
+                    data-tip={`π：\n整个动作的概率分布`}
+                  >
+                    <h3 className="text-sm font-semibold text-accent">采样动作 a</h3>
+                  </div>
 
                   <svg className="h-8 w-7 shrink-0 text-accent" viewBox="0 0 28 32" aria-hidden="true">
                     <line
@@ -233,17 +237,17 @@ export default function HomePage() {
                     <polygon points="28,16 22,12 22,20" fill="currentColor" />
                   </svg>
 
-                  <Environment step={step} />
+                  <Environment step={step} isPlaying={isPlaying} />
 
                   <svg
-                    className={`h-8 w-32 shrink-0 text-accent ${expanded ? "-translate-x-4" : "-translate-x-2"}`}
-                    viewBox={expanded ? "0 0 100 32" : "0 0 110 32"}
+                    className={`h-8 w-32 shrink-0 text-accent ${expanded ? "-translate-x-2" : ""}`}
+                    viewBox={expanded ? "0 0 120 32" : "0 0 130 32"}
                     aria-hidden="true"
                   >
                     <line
                       x1="0"
                       y1="16"
-                      x2={expanded ? "100" : "110"}
+                      x2={expanded ? "120" : "130"}
                       y2="16"
                       stroke="currentColor"
                       strokeWidth="1.5"
@@ -251,20 +255,20 @@ export default function HomePage() {
                       className="dash-animation"
                     />
                     <polygon
-                      points={expanded ? "100,16 94,12 94,20" : "110,16 104,12 104,20"}
+                      points={expanded ? "120,16 114,12 114,20" : "130,16 124,12 124,20"}
                       fill="currentColor"
                     />
                   </svg>
 
                   <svg
-                    className={`h-8 w-170 shrink-0 text-primary ${expanded ? "mt-64 -translate-x-172" : "mt-50 -translate-x-170"}`}
-                    viewBox={expanded ? "0 0 620 32" : "0 0 630 32"}
+                    className={`h-8 w-170 shrink-0 text-primary ${expanded ? "mt-64 -translate-x-166" : "mt-50 -translate-x-164"}`}
+                    viewBox={expanded ? "0 0 620 32" : "0 0 640 32"}
                     aria-hidden="true"
                   >
                     <line
                       x1="0"
                       y1="12"
-                      x2={expanded ? "620" : "630"}
+                      x2={expanded ? "620" : "640"}
                       y2="12"
                       stroke="currentColor"
                       strokeWidth="1.5"
@@ -272,7 +276,7 @@ export default function HomePage() {
                       className="dash-animation"
                     />
                     <polygon
-                      points={expanded ? "620,12 614,8 614,16" : "630,12 624,8 624,16"}
+                      points={expanded ? "620,12 614,8 614,16" : "640,12 634,8 634,16"}
                       fill="currentColor"
                     />
                   </svg>
@@ -297,7 +301,7 @@ export default function HomePage() {
 
         <section
           ref={narrativeRef}
-          className="relative z-20 mx-auto flex w-full max-w-6xl justify-center px-4 pb-24 pt-[88vh] sm:px-6 lg:px-8"
+          className="relative z-20 mx-auto flex w-full max-w-6xl justify-center"
         >
           <div className="w-full">
             <PPOStoryPanel

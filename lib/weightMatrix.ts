@@ -2,7 +2,8 @@ import frontendWeightData from "@/public/data/ppo_weights_frontend.json";
 import summaryWeightData from "@/public/data/ppo_weights_summary.json";
 
 export type TrainingPhaseId = "early" | "middle" | "late";
-export type WeightStep = 20000 | 40000 | 100000;
+export type TrainingStep = 51 | 1039 | 2197;
+export type WeightCheckpointStep = 20000 | 40000 | 100000;
 export type NetworkKind = "actor" | "critic";
 export type WeightLayerKey =
   | "obs_fc1"
@@ -93,7 +94,8 @@ export type NetworkMatrixWaveData = {
   networkTitle: string;
   phaseId: TrainingPhaseId;
   phaseLabel: string;
-  step: WeightStep;
+  step: TrainingStep;
+  checkpointStep: WeightCheckpointStep;
   structureLabel: string;
   description: string;
   paramCount: number;
@@ -105,7 +107,13 @@ export type NetworkMatrixWaveData = {
   biases: MatrixWaveBiasStripData[];
 };
 
-const PHASE_TO_STEP: Record<TrainingPhaseId, WeightStep> = {
+const PHASE_TO_STEP: Record<TrainingPhaseId, TrainingStep> = {
+  early: 51,
+  middle: 1039,
+  late: 2197,
+};
+
+const PHASE_TO_CHECKPOINT_STEP: Record<TrainingPhaseId, WeightCheckpointStep> = {
   early: 20000,
   middle: 40000,
   late: 100000,
@@ -238,8 +246,9 @@ export function buildNetworkMatrixWaveData(
   summary: SummaryWeightsFile,
 ): NetworkMatrixWaveData {
   const step = PHASE_TO_STEP[phaseId];
-  const frontendStep = findStep(frontend.steps, step);
-  const summaryStep = findStep(summary.steps, step);
+  const checkpointStep = PHASE_TO_CHECKPOINT_STEP[phaseId];
+  const frontendStep = findStep(frontend.steps, checkpointStep);
+  const summaryStep = findStep(summary.steps, checkpointStep);
   const frontendNetwork = frontendStep.networks[networkKind];
   const summaryNetwork = summaryStep.networks[networkKind];
 
@@ -283,8 +292,9 @@ export function buildNetworkMatrixWaveData(
     phaseId,
     phaseLabel: PHASE_LABEL[phaseId],
     step,
+    checkpointStep,
     structureLabel: NETWORK_STRUCTURE[networkKind],
-    description: `${PHASE_LABEL[phaseId]}对应训练 ${step} 步时的 ${NETWORK_TITLE[networkKind]} 网络权重状态。`,
+    description: `${PHASE_LABEL[phaseId]}对应训练 ${step} 步的 ${NETWORK_TITLE[networkKind]} 网络权重状态。`,
     paramCount: frontendNetwork.param_count,
     strongestLayerLabel: strongestLayer.label,
     strongestLayerL2: strongestLayer.l2Norm,

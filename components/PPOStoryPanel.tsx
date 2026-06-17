@@ -130,18 +130,14 @@ export default function PPOStoryPanel({
             <div className="min-w-0 flex-1 space-y-3">
               <div className="flex flex-wrap items-center gap-3">
                 <h3 className="text-2xl font-semibold text-base-content sm:text-3xl">CartPole 训练三阶段</h3>
+                <TopActionButton onClick={onOpenSpiral}>螺旋训练曲线</TopActionButton>
                 <TopActionButton onClick={() => onOpenStateHeatmap?.("early")}>状态热力图</TopActionButton>
                 <TopActionButton onClick={() => onOpenAdvantageAnalysis?.("early")}>Advantage 分析</TopActionButton>
-                <TopActionButton onClick={onOpenSpiral}>查看螺旋训练曲线</TopActionButton>
               </div>
               <p className="text-sm leading-6 text-base-content/65">
-                这里按当前训练记录里的四个指标做教学分段：approx_kl、clipfrac、value_loss、explained_variance。
+                CartPole一共训练了2187个steps，即100000个global steps。这里按当前训练记录里的四个指标做教学分段：approx_kl、clipfrac、value_loss、explained_variance。
               </p>
             </div>
-
-            <span className="rounded-full border border-secondary/20 bg-secondary/10 px-3 py-1 text-xs font-medium text-secondary">
-              training view
-            </span>
           </div>
 
           <div className="grid gap-4 lg:grid-cols-3">

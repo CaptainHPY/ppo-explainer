@@ -20,6 +20,7 @@ type PPOStoryPanelProps = {
   onOpenSpiral?: () => void;
   onOpenMatrixWave?: (phaseId: TrainingPhaseId, networkKind: NetworkKind) => void;
   onOpenStateHeatmap?: (phaseId: HeatmapPhaseId) => void;
+  onOpenAdvantageAnalysis?: (phaseId: TrainingPhaseId) => void;
 };
 
 const ppoOverview =
@@ -107,6 +108,7 @@ export default function PPOStoryPanel({
   onOpenSpiral,
   onOpenMatrixWave,
   onOpenStateHeatmap,
+  onOpenAdvantageAnalysis,
 }: PPOStoryPanelProps) {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-16">
@@ -129,6 +131,7 @@ export default function PPOStoryPanel({
               <div className="flex flex-wrap items-center gap-3">
                 <h3 className="text-2xl font-semibold text-base-content sm:text-3xl">CartPole 训练三阶段</h3>
                 <TopActionButton onClick={() => onOpenStateHeatmap?.("early")}>状态热力图</TopActionButton>
+                <TopActionButton onClick={() => onOpenAdvantageAnalysis?.("early")}>Advantage 分析</TopActionButton>
                 <TopActionButton onClick={onOpenSpiral}>查看螺旋训练曲线</TopActionButton>
               </div>
               <p className="text-sm leading-6 text-base-content/65">

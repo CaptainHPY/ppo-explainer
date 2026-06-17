@@ -60,6 +60,10 @@ def parse_args():
         help="minimum value for the heatmap y-axis binning range")
     parser.add_argument("--state-heatmap-y-max", type=float, default=3.0,
         help="maximum value for the heatmap y-axis binning range")
+    parser.add_argument("--save-advantage-analysis", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
+        help="if toggled, save advantage analysis statistics as JSON")
+    parser.add_argument("--advantage-analysis-dir", type=str, default="public/data",
+        help="directory to save advantage analysis outputs")
 
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="CartPole-v1",
@@ -177,6 +181,20 @@ def create_state_heatmap_accumulator(args):
             "policy_right_prob_sum": np.zeros((bins_y, bins_x), dtype=np.float64),
             "action_right_count": np.zeros((bins_y, bins_x), dtype=np.int64),
             "failure_count": np.zeros((bins_y, bins_x), dtype=np.int64),
+        }
+    return accumulator
+
+
+def create_advantage_phase_accumulator(args):
+    accumulator = {}
+    for phase in build_state_heatmap_phase_configs(args.state_heatmap_steps):
+        accumulator[phase["phase_id"]] = {
+            "label": phase["label"],
+            "step_start": phase["step_start"],
+            "step_end": phase["step_end"],
+            "sample_count": 0,
+            "samples": [],
+            "minibatches": [],
         }
     return accumulator
 
@@ -304,6 +322,124 @@ def export_state_heatmaps(args, run_name, envs, phase_accumulator):
     print(f"saved state heatmap summary to {output_path}")
 
 
+def summarize_scalar_series(values):
+    if not values:
+        return {
+            "count": 0,
+            "mean": None,
+            "std": None,
+            "min": None,
+            "max": None,
+        }
+
+    array = np.asarray(values, dtype=np.float64)
+    return {
+        "count": int(array.size),
+        "mean": float(array.mean()),
+        "std": float(array.std()),
+        "min": float(array.min()),
+        "max": float(array.max()),
+    }
+
+
+def record_advantage_samples(phase_accumulator, sample_steps, advantages, returns, values, update_idx):
+    for index, sample_step in enumerate(sample_steps):
+        phase_id = resolve_phase_id(int(sample_step), phase_accumulator)
+        if phase_id is None:
+            continue
+
+        advantage = float(advantages[index])
+        return_value = float(returns[index])
+        critic_value = float(values[index])
+        phase = phase_accumulator[phase_id]
+        phase["sample_count"] += 1
+        phase["samples"].append(
+            {
+                "step": int(sample_step),
+                "update_idx": int(update_idx),
+                "advantage": advantage,
+                "return": return_value,
+                "value": critic_value,
+                "prediction_error": float(return_value - critic_value),
+            }
+        )
+
+
+def record_advantage_minibatch(phase_accumulator, sample_steps, advantages, returns, values, update_idx, epoch_idx, minibatch_idx):
+    phase_to_indices = {}
+    for local_index, sample_step in enumerate(sample_steps):
+        phase_id = resolve_phase_id(int(sample_step), phase_accumulator)
+        if phase_id is None:
+            continue
+        phase_to_indices.setdefault(phase_id, []).append(local_index)
+
+    for phase_id, indices in phase_to_indices.items():
+        phase_advantages = advantages[indices]
+        phase_returns = returns[indices]
+        phase_values = values[indices]
+        phase_errors = phase_returns - phase_values
+        phase_accumulator[phase_id]["minibatches"].append(
+            {
+                "update_idx": int(update_idx),
+                "epoch_idx": int(epoch_idx),
+                "minibatch_idx": int(minibatch_idx),
+                "sample_count": int(len(indices)),
+                "advantage_mean": float(np.mean(phase_advantages)),
+                "advantage_std": float(np.std(phase_advantages)),
+                "return_mean": float(np.mean(phase_returns)),
+                "value_mean": float(np.mean(phase_values)),
+                "prediction_error_mean": float(np.mean(phase_errors)),
+                "prediction_error_std": float(np.std(phase_errors)),
+            }
+        )
+
+
+def export_advantage_analysis(args, run_name, envs, phase_accumulator):
+    os.makedirs(args.advantage_analysis_dir, exist_ok=True)
+    output_path = os.path.join(args.advantage_analysis_dir, "ppo_advantage_analysis.json")
+
+    phases = []
+    for phase_id in ["early", "middle", "late"]:
+        phase = phase_accumulator[phase_id]
+        samples = phase["samples"]
+        minibatches = phase["minibatches"]
+        phases.append(
+            {
+                "phase_id": phase_id,
+                "label": phase["label"],
+                "step_start": phase["step_start"],
+                "step_end": phase["step_end"],
+                "sample_count": phase["sample_count"],
+                "samples": samples,
+                "summary": {
+                    "advantage": summarize_scalar_series([item["advantage"] for item in samples]),
+                    "return": summarize_scalar_series([item["return"] for item in samples]),
+                    "value": summarize_scalar_series([item["value"] for item in samples]),
+                    "prediction_error": summarize_scalar_series([item["prediction_error"] for item in samples]),
+                },
+                "minibatches": minibatches,
+            }
+        )
+
+    payload = {
+        "schema_version": 1,
+        "env_id": args.env_id,
+        "run_name": run_name,
+        "total_timesteps": args.total_timesteps,
+        "network_architecture": {
+            "actor": f"{np.array(envs.single_observation_space.shape).prod()}->64->64->{envs.single_action_space.n}",
+            "critic": f"{np.array(envs.single_observation_space.shape).prod()}->64->64->1",
+        },
+        "phase_steps": args.state_heatmap_steps,
+        "phases": phases,
+    }
+
+    with open(output_path, "w", encoding="utf-8") as fp:
+        json.dump(payload, fp, ensure_ascii=False, indent=2)
+
+    print(f"saved advantage analysis to {output_path}")
+
+
 class Agent(nn.Module):
     def __init__(self, envs):
         super().__init__()
@@ -385,6 +521,7 @@ if __name__ == "__main__":
     rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
     dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
     values = torch.zeros((args.num_steps, args.num_envs)).to(device)
+    step_ids = torch.zeros((args.num_steps, args.num_envs), dtype=torch.long).to(device)
 
     # TRY NOT TO MODIFY: start the game
     global_step = 0
@@ -394,6 +531,7 @@ if __name__ == "__main__":
     next_done = torch.zeros(args.num_envs).to(device)
     num_updates = args.total_timesteps // args.batch_size
     phase_heatmaps = create_state_heatmap_accumulator(args) if args.save_state_heatmap else None
+    phase_advantage_analysis = create_advantage_phase_accumulator(args) if args.save_advantage_analysis else None
 
     for update in range(1, num_updates + 1):
         # Annealing the rate if instructed to do so.
@@ -407,6 +545,7 @@ if __name__ == "__main__":
             global_step += 1 * args.num_envs
             obs[step] = next_obs
             dones[step] = next_done
+            step_ids[step] = torch.arange(step_base + 1, step_base + args.num_envs + 1, device=device)
 
             # ALGO LOGIC: action logic
             with torch.no_grad():
@@ -463,13 +602,24 @@ if __name__ == "__main__":
         b_advantages = advantages.reshape(-1)
         b_returns = returns.reshape(-1)
         b_values = values.reshape(-1)
+        b_step_ids = step_ids.reshape(-1)
+
+        if args.save_advantage_analysis:
+            record_advantage_samples(
+                phase_advantage_analysis,
+                b_step_ids.detach().cpu().numpy(),
+                b_advantages.detach().cpu().numpy(),
+                b_returns.detach().cpu().numpy(),
+                b_values.detach().cpu().numpy(),
+                update,
+            )
 
         # Optimizing the policy and value network
         b_inds = np.arange(args.batch_size)
         clipfracs = []
         for epoch in range(args.update_epochs):
             np.random.shuffle(b_inds)
-            for start in range(0, args.batch_size, args.minibatch_size):
+            for minibatch_idx, start in enumerate(range(0, args.batch_size, args.minibatch_size), start=1):
                 end = start + args.minibatch_size
                 mb_inds = b_inds[start:end]
 
@@ -486,6 +636,18 @@ if __name__ == "__main__":
                 mb_advantages = b_advantages[mb_inds]
                 if args.norm_adv:
                     mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
+
+                if args.save_advantage_analysis:
+                    record_advantage_minibatch(
+                        phase_advantage_analysis,
+                        b_step_ids[mb_inds].detach().cpu().numpy(),
+                        b_advantages[mb_inds].detach().cpu().numpy(),
+                        b_returns[mb_inds].detach().cpu().numpy(),
+                        b_values[mb_inds].detach().cpu().numpy(),
+                        update,
+                        epoch + 1,
+                        minibatch_idx,
+                    )
 
                 # Policy loss
                 pg_loss1 = -mb_advantages * ratio
@@ -543,6 +705,8 @@ if __name__ == "__main__":
 
     if args.save_state_heatmap:
         export_state_heatmaps(args, run_name, envs, phase_heatmaps)
+    if args.save_advantage_analysis:
+        export_advantage_analysis(args, run_name, envs, phase_advantage_analysis)
 
     envs.close()
     writer.close()

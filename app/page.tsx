@@ -11,6 +11,8 @@ import NetworkMatrixWaveModal from "@/components/NetworkMatrixWaveModal";
 import PPOStoryPanel, { type NarrativeSectionId } from "@/components/PPOStoryPanel";
 import SpiralTrainingModal from "@/components/SpiralTrainingModal";
 import StateHeatmapModal from "@/components/StateHeatmapModal";
+import AdvantageAnalysisModal from "@/components/AdvantageAnalysisModal";
+import type { AdvantagePhaseId } from "@/lib/advantageAnalysis";
 import type { HeatmapPhaseId } from "@/lib/stateHeatmap";
 import type { MatrixWaveModalState } from "@/lib/weightMatrix";
 
@@ -27,6 +29,7 @@ export default function HomePage() {
   const [isSpiralOpen, setIsSpiralOpen] = useState(false);
   const [matrixWaveModalState, setMatrixWaveModalState] = useState<MatrixWaveModalState>(null);
   const [stateHeatmapModalPhase, setStateHeatmapModalPhase] = useState<HeatmapPhaseId | null>(null);
+  const [advantageModalPhase, setAdvantageModalPhase] = useState<AdvantagePhaseId | null>(null);
   const narrativeRef = useRef<HTMLDivElement | null>(null);
   const mockupHeight = expanded ? 700 : 500;
   const mockupWidth = expanded ? 2000 : 1350;
@@ -312,6 +315,7 @@ export default function HomePage() {
               onOpenSpiral={() => setIsSpiralOpen(true)}
               onOpenMatrixWave={(phaseId, networkKind) => setMatrixWaveModalState({ phaseId, networkKind })}
               onOpenStateHeatmap={(phaseId) => setStateHeatmapModalPhase(phaseId)}
+              onOpenAdvantageAnalysis={(phaseId) => setAdvantageModalPhase(phaseId)}
             />
           </div>
         </section>
@@ -319,6 +323,11 @@ export default function HomePage() {
         <SpiralTrainingModal open={isSpiralOpen} onClose={() => setIsSpiralOpen(false)} />
         <NetworkMatrixWaveModal state={matrixWaveModalState} onClose={() => setMatrixWaveModalState(null)} />
         <StateHeatmapModal phaseId={stateHeatmapModalPhase} onClose={() => setStateHeatmapModalPhase(null)} />
+        <AdvantageAnalysisModal
+          open={Boolean(advantageModalPhase)}
+          initialPhaseId={advantageModalPhase ?? "early"}
+          onClose={() => setAdvantageModalPhase(null)}
+        />
       </div>
     </>
   );

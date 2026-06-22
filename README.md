@@ -1,8 +1,8 @@
-<center>
+<div align="center">
 
 # PPO-Explainer
 
-</center>
+</div>
 
 <div align="center">
     <a href="https://ppo-explainer.vercel.app/">
